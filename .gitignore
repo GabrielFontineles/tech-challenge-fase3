@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data
+*.csv
+*.parquet
+*.xlsx
+!data/**/.gitkeep
+
+# AWS
+.aws/
+*.pem
+credentials.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models
+*.pkl
+*.joblib
+*.h5
