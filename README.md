@@ -78,3 +78,33 @@ Pipeline([
     ('modelo', GradientBoostingClassifier(random_state=42))
 ])
 ```
+
+---
+
+## Escolha do Algoritmo
+
+### Modelos avaliados (Cross-Validation 5-Fold)
+
+| Modelo | Accuracy | F1-Score | ROC-AUC |
+|---|---|---|---|
+| Logistic Regression | 0.9728 | 0.9764 | 0.9970 |
+| Decision Tree | 0.9606 | 0.9656 | 0.9610 |
+| Random Forest | 0.9696 | 0.9736 | 0.9971 |
+| **Gradient Boosting** | **0.9694** | **0.9734** | **0.9971** |
+
+### Modelo selecionado: Gradient Boosting
+Selecionado pelo maior ROC-AUC e melhor estabilidade no cross-validation.
+
+---
+
+## Métricas de Avaliação — Conjunto de Teste
+
+| Métrica | Valor |
+|---|---|
+| Accuracy | 96.4% |
+| Precision | 96.4% |
+| Recall | 97.3% |
+| F1-Score | 96.9% |
+| ROC-AUC | 99.6% |
+
+Split: 80% treino / 20% teste — estratificado por classe.
