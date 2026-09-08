@@ -108,3 +108,36 @@ Selecionado pelo maior ROC-AUC e melhor estabilidade no cross-validation.
 | ROC-AUC | 99.6% |
 
 Split: 80% treino / 20% teste — estratificado por classe.
+
+---
+
+## Interpretação dos Resultados — SHAP Values
+
+### Top 5 features mais importantes
+
+| Feature | SHAP Value | Interpretação |
+|---|---|---|
+| score_niveis_altos | 3.55 | Proporção de alunos em níveis avançados |
+| media_portugues | 0.97 | Desempenho em língua portuguesa |
+| proporcao_aluno_nivel_3 | 0.56 | Nível intermediário crítico |
+| proporcao_aluno_nivel_5 | 0.26 | Nível avançado inicial |
+| proporcao_aluno_nivel_2 | 0.25 | Nível básico superior |
+
+### Insights encontrados
+
+- **Ceará** é a única UF que já atingiu a meta de 2030 (85.3%)
+- **728 municípios (13.2%)** estão em situação crítica — taxa abaixo de 40%
+- **Nordeste concentra 27.8%** dos municípios críticos
+- **Rio Grande do Sul** caiu 18.8 pontos entre 2023 e 2024
+- **Gap regional**: Norte/Nordeste 9.2 pontos abaixo de Sul/Sudeste
+- **4 clusters** identificados: Crítico, Vulnerável, Em desenvolvimento, Avançado
+
+---
+
+## Limitações do Projeto
+
+- Dados disponíveis apenas para 2023 e 2024 — série histórica curta
+- Tabela de microdados de alunos (256MB) acessível apenas via BigQuery
+- Ausência de variáveis socioeconômicas externas (IBGE, FUNDEB)
+- Modelo treinado apenas com rede Total — não diferencia municipal/estadual
+- 3.5% de missing values nas colunas de meta municipal
