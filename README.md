@@ -141,3 +141,71 @@ Split: 80% treino / 20% teste — estratificado por classe.
 - Ausência de variáveis socioeconômicas externas (IBGE, FUNDEB)
 - Modelo treinado apenas com rede Total — não diferencia municipal/estadual
 - 3.5% de missing values nas colunas de meta municipal
+
+---
+
+## Aplicação Prática para Políticas Públicas
+
+- **Identificação precoce de risco**: modelo com 96.4% de accuracy permite antecipar municípios em risco antes do ciclo de avaliação
+- **Priorização de recursos**: 728 municípios críticos identificados para intervenção urgente
+- **Foco regional**: Norte e Nordeste como regiões prioritárias
+- **Alavanca principal**: programas de reforço em língua portuguesa nos níveis 0-3
+- **Monitoramento contínuo**: municípios com queda de participação são candidatos a deterioração futura
+
+---
+
+## Possíveis Evoluções Futuras
+
+- Incorporar dados do IBGE, FUNDEB e Censo Escolar como features externas
+- Expandir para microdados de alunos via BigQuery
+- Implementar modelo temporal com dados de múltiplos anos
+- Desenvolver dashboard interativo com Streamlit ou Power BI
+- Criar API de predição para consumo por sistemas municipais
+
+---
+
+## Como Executar
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/GabrielFontineles/tech-challenge-fase3.git
+cd tech-challenge-fase3
+
+# 2. Instale as dependências
+pip install -r requirements.txt
+
+# 3. Execute a análise exploratória
+python src/preprocessing/eda_inicial.py
+python src/preprocessing/eda_correlacoes.py
+
+# 4. Execute o feature engineering
+python src/preprocessing/feature_engineering.py
+
+# 5. Treine os modelos
+python src/modeling/ml_pipeline.py
+
+# 6. Análise de interpretabilidade
+python src/evaluation/shap_analysis.py
+
+# 7. Análise estratégica
+python src/evaluation/strategic_analysis.py
+```
+
+---
+
+## Estrutura do Repositório
+
+tech-challenge-fase3/
+├── data/
+│ ├── raw/ ← Dados Silver da Fase 2
+│ ├── processed/ ← Dataset para modelagem
+│ └── gold/ ← Datasets Gold da Fase 2
+├── src/
+│ ├── preprocessing/ ← EDA e Feature Engineering
+│ ├── modeling/ ← Pipeline ML
+│ └── evaluation/ ← SHAP e Análise Estratégica
+├── images/ ← 14 gráficos gerados
+├── reports/ ← Relatório executivo
+├── requirements.txt
+└── README.md
+
