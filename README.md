@@ -1,34 +1,185 @@
 # Predição e Inteligência Analítica para Alfabetização no Brasil
 
-## Contexto do Problema
+> Tech Challenge — Fase 3 · Pós-Tech FIAP — IA Scientist
+> Modelo supervisionado que estima, para cada município, a probabilidade de estar **em risco de não alfabetização** no próximo ciclo de avaliação, e explica quais fatores educacionais, territoriais e socioeconômicos sustentam esse risco.
 
-A alfabetização infantil é um dos principais indicadores do desenvolvimento educacional e social do Brasil. O **Compromisso Nacional Criança Alfabetizada** estabelece como meta que todas as crianças estejam alfabetizadas até o final do 2º ano do ensino fundamental até 2030.
-
-Este projeto é a continuação do **Tech Challenge Fase 2**, onde construímos uma pipeline híbrida de dados para análise do Indicador Criança Alfabetizada. Nesta fase, utilizamos os dados da camada Gold para desenvolver modelos preditivos e análises estratégicas que transformam dados públicos em inteligência aplicada à tomada de decisão.
-
----
-
-## Objetivo Analítico
-
-Desenvolver um modelo supervisionado capaz de prever se um município será considerado **alfabetizado ou em risco**, utilizando variáveis educacionais e territoriais, e gerar inteligência estratégica para apoiar políticas públicas educacionais.
+> ⚠️ **Status:** pipeline e documentação prontas; os números marcados com `[a preencher]` serão atualizados após a execução com os dados reais da Fase 2 e das fontes externas.
 
 ---
 
-## Base de Dados
+## Contexto do problema
 
-Dados provenientes da camada Gold do Tech Challenge Fase 2:
+A alfabetização ao final do 2º ano do ensino fundamental é um dos indicadores mais sensíveis do desenvolvimento educacional e social do país. O **Compromisso Nacional Criança Alfabetizada** estabelece a meta de 80% de crianças alfabetizadas até 2030, monitorada pelo **Indicador Criança Alfabetizada (ICA)**, calculado a partir do SAEB 2º ano.
 
-| Dataset | Registros | Descrição |
+Na Fase 2 construímos a pipeline de engenharia de dados (camadas Bronze → Silver → Gold) que integra o ICA com metas nacionais, estaduais e municipais. Nesta fase, transformamos esses dados em **inteligência preditiva**: em vez de descrever o que aconteceu, antecipamos onde o risco vai se materializar e quais alavancas os gestores podem acionar.
+
+## Objetivo analítico
+
+Prever se um município estará **em risco** (taxa de alfabetização < 60%) no ano *t+1*, usando apenas informação disponível até o ano *t*, e responder:
+
+1. Quais fatores mais impactam a alfabetização?
+2. Quais municípios apresentam maior risco educacional?
+3. Quais regiões possuem padrões semelhantes?
+4. Como prever municípios que podem não atingir as metas de 2030?
+5. Quais variáveis têm maior influência nos modelos?
+
+**Unidade de análise — por que município e não aluno.** Os microdados por aluno (SAEB 2º ano) não trazem variáveis socioeconômicas individuais e só estão acessíveis via BigQuery em volume elevado; a decisão de política pública (priorização de recursos, FUNDEB, programas de reforço) ocorre no nível municipal; e a camada Gold da Fase 2 foi construída nessa granularidade. Registramos a escolha como decisão analítica, não como limitação escondida.
+
+## Base utilizada
+
+**Camada Gold/Silver da Fase 2** — `municipio_silver` (município × ano × rede): taxa de alfabetização, média em português, participação, distribuição de alunos por nível de proficiência, meta 2030 e distância à meta; tabelas Gold de ranking de UFs, evolução temporal, visão municipal e nacional.
+
+**Enriquecimento externo** (todas anteriores ou contemporâneas a 2023 — ver `data/README.md`):
+
+| Bloco | Fonte | Variáveis |
 |---|---|---|
-| `municipio_silver` | 23.995 | Indicadores por município, ano e rede |
-| `ranking_estados` | 49 | Ranking nacional por UF |
-| `evolucao_temporal` | 24 | Variação 2023→2024 por estado |
-| `analise_municipal` | 26 | Agregação municipal por UF |
-| `visao_brasil` | 2 | Agregação nacional por ano |
+| A — Histórico educacional (t = 2023) | ICA / Fase 2 | taxa, média PT, participação, proporção por nível, gap para a meta, posição relativa à UF, entropia dos níveis, nº de alunos avaliados |
+| B — Território | IBGE Censo 2022, código IBGE | UF, região, população, densidade, porte, capital |
+| C — Socioeconômico e estrutura da rede | Atlas do Desenvolvimento Humano (2010), IBGE PIB municipal (2021), INEP IDEB 2023, INEP Indicadores Educacionais 2023, Censo Escolar 2023, FUNDEB, Cadastro Único | IDHM e subíndices, renda, Gini, pobreza, analfabetismo adulto, PIB per capita e composição setorial, IDEB anos iniciais e variação, distorção idade-série, adequação docente, infraestrutura escolar (internet, biblioteca, laboratório, água, esgoto), alunos por docente/turma, matrícula integral, receita FUNDEB por matrícula, % população no CadÚnico |
 
-**Dataset de modelagem:** 5.516 municípios (2024, rede Total) com 22 features.
+**Dataset de modelagem:** `[a preencher]` municípios pareados 2023 → 2024 (rede Total), `[a preencher]` features; prevalência da classe risco `[a preencher]`%.
 
----
+## Desenho temporal e tratamento de data leakage
+
+O ponto central do desenho: **features observadas em 2023, target observado em 2024.**
+
+Na primeira versão deste projeto o target era derivado da taxa de 2024 e as features incluíam a distribuição de alunos por nível também de 2024 — que é, por construção, a decomposição da própria taxa. O modelo atingia ROC-AUC de 0,997 "reconstruindo" a fórmula do target. Reformulamos o problema para um desenho preditivo real, com regras auditáveis pelo nome da coluna:
+
+1. Do ano t+1 entra **apenas** o target `em_risco` (a taxa contínua `taxa_alfabetizacao_t1` fica guardada só para análise). Lista `COLUNAS_PROIBIDAS` em `src/data/build_dataset.py`; `features.auditar()` interrompe a execução se algo com sufixo `_t1` chegar a X.
+2. Toda feature histórica carrega sufixo `_t`; toda feature externa carrega o prefixo da fonte (e ano ≤ 2023).
+3. Imputação (mediana + indicador de ausência), padronização e one-hot vivem **dentro** do `Pipeline` do scikit-learn → ajustadas apenas no treino, em cada fold.
+4. Nenhum encoding ordinal "por desempenho" (o `regiao_encoded` da versão anterior foi removido); UF, região e porte entram como categóricas.
+5. O conjunto de teste (20%, estratificado) é tocado uma única vez; o threshold é escolhido em predições *out-of-fold* do treino.
+
+## Etapas de modelagem
+
+```
+src/data/download_external.py   → fontes externas padronizadas por id_municipio
+src/data/build_dataset.py       → pareamento t → t+1, blocos A/B/C, dicionário de dados
+src/preprocessing/features.py   → seleção + auditoria anti-leakage
+src/preprocessing/pipeline.py   → ColumnTransformer (num: imputer+indicador+scaler | cat: imputer+one-hot)
+src/modeling/train.py           → baselines em CV, RandomizedSearchCV, threshold, calibração, joblib
+src/evaluation/shap_analysis.py → importância por permutação + SHAP (global, dependence, waterfall)
+src/evaluation/strategic.py     → ranking de risco, clusters, projeção de metas, priorização
+```
+
+```python
+Pipeline([
+    ("pre", ColumnTransformer([
+        ("num", Pipeline([("imputer", SimpleImputer(strategy="median", add_indicator=True)),
+                          ("scaler", StandardScaler())]), colunas_numericas),
+        ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                          ("onehot", OneHotEncoder(handle_unknown="ignore", min_frequency=20))]), colunas_categoricas),
+    ])),
+    ("clf", HistGradientBoostingClassifier(...)),
+])
+```
+
+**Validação:** split estratificado 80/20 (teste) + `StratifiedKFold(5)` no treino (validação) → estrutura treino / validação / teste. `RandomizedSearchCV` (40 iterações, `scoring="average_precision"`) para Regressão Logística, Random Forest e HistGradientBoosting, com registro do *gap* treino × CV como controle de overfitting. `DummyClassifier` como piso.
+
+**Threshold:** para o gestor, o erro mais caro é deixar passar um município em risco. Escolhemos o maior threshold cujo recall da classe risco (out-of-fold) é ≥ 0,85, e reportamos também o resultado em 0,5.
+
+**Duas variantes:** modelo completo (blocos A+B+C) e modelo **estrutural** (B+C, sem histórico) — o segundo isola os fatores sobre os quais a política pública pode agir.
+
+## Escolha do algoritmo
+
+| Modelo | ROC-AUC (CV) | PR-AUC (CV) | Recall risco (CV) | Gap treino–CV |
+|---|---|---|---|---|
+| Dummy (prior) | 0,500 | `[a preencher]` | — | — |
+| Regressão Logística | `[a preencher]` | | | |
+| Random Forest | `[a preencher]` | | | |
+| HistGradientBoosting | `[a preencher]` | | | |
+
+**Selecionado:** `[a preencher]` — critério: maior PR-AUC no CV com gap treino–CV pequeno.
+
+## Métricas de avaliação — conjunto de teste (uma única avaliação)
+
+| Métrica | threshold escolhido (`[a preencher]`) | threshold 0,5 |
+|---|---|---|
+| ROC-AUC | `[a preencher]` | |
+| PR-AUC | | |
+| Recall (risco) | | |
+| Precisão (risco) | | |
+| F1 (risco) | | |
+| Brier (calibrado) | | |
+
+Leitura esperada: AUC entre 0,80 e 0,90. Valores acima de 0,97 são tratados como sintoma de vazamento, não como sucesso.
+
+## Interpretação dos resultados
+
+- Importância por permutação (queda de PR-AUC no teste) e SHAP (TreeExplainer) para o modelo completo e para a variante estrutural.
+- Dependence plots das 4 principais features e *waterfall* de três municípios: maior risco, limítrofe e risco não capturado.
+- `[a preencher]` — tabela de convergência entre permutação, SHAP e coeficientes da regressão logística.
+
+## Insights encontrados
+
+`[a preencher após execução com dados reais — ver notebooks 01, 04 e 05]`
+
+## Limitações do projeto
+
+- Série histórica de dois anos: um único par t → t+1, sem validação temporal com múltiplos anos.
+- Atlas do Desenvolvimento Humano baseado no Censo 2010; PIB municipal de 2021; Censo 2022 ainda parcial no nível municipal.
+- Ruído amostral em municípios pequenos (poucos alunos avaliados) — tratado com `log_alunos_avaliados_t`, mas não eliminado.
+- Target binário com corte de 60% (análise de sensibilidade no notebook 02).
+- Rede Total não separa desempenho da rede municipal e estadual.
+- Evidência correlacional: o modelo aponta associações, não efeitos causais.
+
+## Aplicação prática para políticas públicas
+
+- **Ranking de risco** calibrado por município (`reports/ranking_risco_municipios.csv`) → priorização de visitas técnicas e recursos.
+- **Lista de priorização** (alto risco × baixo IDHM-Educação) → `reports/priorizacao_municipios.csv`.
+- **Clusters estruturais** → desenhar intervenções por perfil, não por UF.
+- **Projeção de metas 2030** → municípios "fora da trajetória" com a variação anual necessária para atingir a meta.
+- **Alavancas** (variante estrutural do SHAP) → `[a preencher]`.
+
+## Possíveis evoluções futuras
+
+- Incorporar novas edições do ICA para validação temporal (treinar em 2023→2024, testar em 2024→2025).
+- Modelo de regressão para a taxa contínua e intervalos de predição.
+- Painel interativo (Streamlit) com mapa e simulador "e se" por alavanca.
+- API de escoragem para as secretarias.
+
+## Como executar
+
+```bash
+git clone https://github.com/GabrielFontineles/tech-challenge-fase3.git && cd tech-challenge-fase3
+python -m venv venv && source venv/bin/activate      # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# 1. colocar a Silver/Gold da Fase 2 em data/raw e data/gold (ver data/README.md)
+# 2. fontes externas (o que não baixar automaticamente, baixar à mão e rodar de novo com SKIP=1)
+make external
+# 3. pipeline completa
+make dataset train explain strategy
+# 4. notebooks narrados
+jupyter lab notebooks/
+# 5. testes
+make test
+```
+
+Sem os dados reais, `make synthetic` gera uma Silver fictícia apenas para validar que a pipeline roda de ponta a ponta.
+
+## Estrutura do repositório
+
+```
+tech-challenge-fase3/
+├── data/                  README.md com a obtenção de cada fonte; raw/ gold/ external/ processed/ (não versionados)
+├── notebooks/             01 EDA · 02 features · 03 modelagem · 04 SHAP · 05 estratégia
+├── src/
+│   ├── config.py          decisões centrais (anos, corte, colunas, seeds)
+│   ├── data/              download_external.py · build_dataset.py
+│   ├── preprocessing/     features.py · pipeline.py
+│   ├── modeling/          train.py
+│   ├── evaluation/        metrics.py · shap_analysis.py · strategic.py
+│   ├── visualization/     plots.py
+│   └── utils/             synthetic.py
+├── models/                modelo_final*.joblib + metadata*.json
+├── reports/               relatório técnico, relatório executivo, roteiro do vídeo, CSVs de saída
+├── images/                gráficos gerados pela pipeline
+├── tests/                 smoke tests (pytest)
+├── tools/gerar_notebooks.py
+├── Makefile · requirements.txt · README.md · .gitignore
+```
 
 ## Equipe
 
@@ -38,178 +189,4 @@ Dados provenientes da camada Gold do Tech Challenge Fase 2:
 - Katia Oliveira da Silva Costa
 - Yasmim de Oliveira Coelho
 
-Projeto desenvolvido como Tech Challenge — Fase 3
-Pós-Tech FIAP — IA Scientist
-
----
-
-
-## Estrutura do Repositório
-
-```
-tech-challenge-fase3/
-├── data/
-│   ├── raw/               <- Dados Silver da Fase 2 (municipio_silver, uf_silver)
-│   ├── processed/         <- Dataset final para modelagem (dataset_modelagem.parquet)
-│   └── gold/              <- Datasets Gold da Fase 2 (ranking, evolucao, municipal, brasil)
-├── src/
-│   ├── preprocessing/     <- EDA inicial, correlacoes e feature engineering
-│   ├── modeling/          <- Pipeline ML com 4 modelos e selecao do melhor
-│   └── evaluation/        <- SHAP values e analise estrategica
-├── images/                <- 14 graficos gerados pela pipeline
-├── reports/               <- Relatorio executivo em Markdown
-├── requirements.txt       <- Dependencias do projeto
-└── README.md              <- Documentacao completa do projeto
-```
-
-
-## Etapas de Modelagem
-
-### 1. Análise Exploratória (EDA)
-- Distribuição da taxa de alfabetização por município
-- Análise de correlações entre variáveis
-- Desempenho por região geográfica
-- Mapeamento de municípios em situação de risco
-- 5 hipóteses analíticas formuladas e validadas
-
-### 2. Feature Engineering
-- **Variável alvo**: `alfabetizado` (1 = taxa ≥ 60%, 0 = em risco)
-- **Features geográficas**: cod_uf, regiao, regiao_encoded
-- **Features de desempenho**: score_niveis_altos, score_niveis_baixos
-- **Flags**: participacao_alta
-- **Total**: 22 features selecionadas
-
-### 3. Tratamento de Data Leakage
-Variáveis removidas por causar vazamento de informação:
-- `taxa_alfabetizacao` — usada para criar o target
-- `distancia_meta_2030` — derivada da taxa
-- `atingiu_meta_2030` — derivada da taxa
-- `nivel_alfabetizacao` — derivado da taxa
-
-### 4. Pipeline Scikit-learn
-```python
-Pipeline([
-    ('preprocessador', ColumnTransformer([
-        ('num', Pipeline([
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())
-        ]), colunas_numericas)
-    ])),
-    ('modelo', GradientBoostingClassifier(random_state=42))
-])
-```
-
----
-
-## Escolha do Algoritmo
-
-### Modelos avaliados (Cross-Validation 5-Fold)
-
-| Modelo | Accuracy | F1-Score | ROC-AUC |
-|---|---|---|---|
-| Logistic Regression | 0.9728 | 0.9764 | 0.9970 |
-| Decision Tree | 0.9606 | 0.9656 | 0.9610 |
-| Random Forest | 0.9696 | 0.9736 | 0.9971 |
-| **Gradient Boosting** | **0.9694** | **0.9734** | **0.9971** |
-
-### Modelo selecionado: Gradient Boosting
-Selecionado pelo maior ROC-AUC e melhor estabilidade no cross-validation.
-
----
-
-## Métricas de Avaliação — Conjunto de Teste
-
-| Métrica | Valor |
-|---|---|
-| Accuracy | 96.4% |
-| Precision | 96.4% |
-| Recall | 97.3% |
-| F1-Score | 96.9% |
-| ROC-AUC | 99.6% |
-
-Split: 80% treino / 20% teste — estratificado por classe.
-
----
-
-## Interpretação dos Resultados — SHAP Values
-
-### Top 5 features mais importantes
-
-| Feature | SHAP Value | Interpretação |
-|---|---|---|
-| score_niveis_altos | 3.55 | Proporção de alunos em níveis avançados |
-| media_portugues | 0.97 | Desempenho em língua portuguesa |
-| proporcao_aluno_nivel_3 | 0.56 | Nível intermediário crítico |
-| proporcao_aluno_nivel_5 | 0.26 | Nível avançado inicial |
-| proporcao_aluno_nivel_2 | 0.25 | Nível básico superior |
-
-### Insights encontrados
-
-- **Ceará** é a única UF que já atingiu a meta de 2030 (85.3%)
-- **728 municípios (13.2%)** estão em situação crítica — taxa abaixo de 40%
-- **Nordeste concentra 27.8%** dos municípios críticos
-- **Rio Grande do Sul** caiu 18.8 pontos entre 2023 e 2024
-- **Gap regional**: Norte/Nordeste 9.2 pontos abaixo de Sul/Sudeste
-- **4 clusters** identificados: Crítico, Vulnerável, Em desenvolvimento, Avançado
-
----
-
-## Limitações do Projeto
-
-- Dados disponíveis apenas para 2023 e 2024 — série histórica curta
-- Tabela de microdados de alunos (256MB) acessível apenas via BigQuery
-- Ausência de variáveis socioeconômicas externas (IBGE, FUNDEB)
-- Modelo treinado apenas com rede Total — não diferencia municipal/estadual
-- 3.5% de missing values nas colunas de meta municipal
-
----
-
-## Aplicação Prática para Políticas Públicas
-
-- **Identificação precoce de risco**: modelo com 96.4% de accuracy permite antecipar municípios em risco antes do ciclo de avaliação
-- **Priorização de recursos**: 728 municípios críticos identificados para intervenção urgente
-- **Foco regional**: Norte e Nordeste como regiões prioritárias
-- **Alavanca principal**: programas de reforço em língua portuguesa nos níveis 0-3
-- **Monitoramento contínuo**: municípios com queda de participação são candidatos a deterioração futura
-
----
-
-## Possíveis Evoluções Futuras
-
-- Incorporar dados do IBGE, FUNDEB e Censo Escolar como features externas
-- Expandir para microdados de alunos via BigQuery
-- Implementar modelo temporal com dados de múltiplos anos
-- Desenvolver dashboard interativo com Streamlit ou Power BI
-- Criar API de predição para consumo por sistemas municipais
-
----
-
-## Como Executar
-
-```bash
-# 1. Clone o repositório
-git clone https://github.com/GabrielFontineles/tech-challenge-fase3.git
-cd tech-challenge-fase3
-
-# 2. Instale as dependências
-pip install -r requirements.txt
-
-# 3. Execute a análise exploratória
-python src/preprocessing/eda_inicial.py
-python src/preprocessing/eda_correlacoes.py
-
-# 4. Execute o feature engineering
-python src/preprocessing/feature_engineering.py
-
-# 5. Treine os modelos
-python src/modeling/ml_pipeline.py
-
-# 6. Análise de interpretabilidade
-python src/evaluation/shap_analysis.py
-
-# 7. Análise estratégica
-python src/evaluation/strategic_analysis.py
-```
-
----
-
+Projeto desenvolvido como Tech Challenge — Fase 3 · Pós-Tech FIAP — IA Scientist
