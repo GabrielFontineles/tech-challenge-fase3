@@ -195,17 +195,19 @@ python src/evaluation/strategic_analysis.py
 
 ## Estrutura do Repositório
 
+```
 tech-challenge-fase3/
 ├── data/
-│ ├── raw/ ← Dados Silver da Fase 2
-│ ├── processed/ ← Dataset para modelagem
-│ └── gold/ ← Datasets Gold da Fase 2
+│   ├── raw/
+│   ├── processed/
+│   └── gold/
 ├── src/
-│ ├── preprocessing/ ← EDA e Feature Engineering
-│ ├── modeling/ ← Pipeline ML
-│ └── evaluation/ ← SHAP e Análise Estratégica
-├── images/ ← 14 gráficos gerados
-├── reports/ ← Relatório executivo
+│   ├── preprocessing/
+│   ├── modeling/
+│   └── evaluation/
+├── images/
+├── reports/
 ├── requirements.txt
 └── README.md
+```
 
