@@ -198,16 +198,17 @@ python src/evaluation/strategic_analysis.py
 ```
 tech-challenge-fase3/
 ├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── gold/
+│   ├── raw/               <- Dados Silver da Fase 2 (municipio_silver, uf_silver)
+│   ├── processed/         <- Dataset final para modelagem (dataset_modelagem.parquet)
+│   └── gold/              <- Datasets Gold da Fase 2 (ranking, evolucao, municipal, brasil)
 ├── src/
-│   ├── preprocessing/
-│   ├── modeling/
-│   └── evaluation/
-├── images/
-├── reports/
-├── requirements.txt
-└── README.md
+│   ├── preprocessing/     <- EDA inicial, correlacoes e feature engineering
+│   ├── modeling/          <- Pipeline ML com 4 modelos e selecao do melhor
+│   └── evaluation/        <- SHAP values e analise estrategica
+├── images/                <- 14 graficos gerados pela pipeline
+├── reports/               <- Relatorio executivo em Markdown
+├── requirements.txt       <- Dependencias do projeto
+└── README.md              <- Documentacao completa do projeto
 ```
+
 
