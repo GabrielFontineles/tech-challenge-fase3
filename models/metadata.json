@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-09-09T12:43:49.505482",
+  "modelo": "HistGradientBoostingClassifier",
+  "threshold": 0.4580998140250356,
+  "features_numericas": [
+    "taxa_alf_2023",
+    "media_pt_2023",
+    "particip_2023",
+    "nivel_alf_2023",
+    "meta_2030",
+    "gap_meta_2030_2023",
+    "dist_meta_2030_2023",
+    "taxa_vs_uf_2023",
+    "prop_nivel_0_2023",
+    "prop_nivel_1_2023",
+    "prop_nivel_2_2023",
+    "prop_nivel_3_2023",
+    "prop_nivel_4_2023",
+    "prop_nivel_5_2023",
+    "prop_nivel_6_2023",
+    "prop_nivel_7_2023",
+    "prop_nivel_8_2023",
+    "populacao_2023",
+    "log_populacao",
+    "idhm",
+    "idhm_educacao",
+    "idhm_renda",
+    "renda_per_capita",
+    "gini",
+    "pct_pobres",
+    "pib_per_capita",
+    "log_pib_per_capita"
+  ],
+  "features_categoricas": [
+    "sigla_uf",
+    "regiao",
+    "porte"
+  ],
+  "metricas_teste": {
+    "roc_auc": 0.9102773556231004,
+    "pr_auc": 0.894496984124522,
+    "recall": 0.8595238095238096,
+    "precision": 0.7680851063829788,
+    "f1": 0.8112359550561797,
+    "brier": 0.11938841408632432,
+    "threshold": 0.4580998140250356
+  },
+  "target": "em_risco_2024",
+  "design": "features_2023_target_2024",
+  "corte_risco": 60.0
+}
