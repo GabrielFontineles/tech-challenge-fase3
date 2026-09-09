@@ -10,7 +10,17 @@ Este projeto é a continuação do **Tech Challenge Fase 2**, onde construímos 
 
 ## Objetivo Analítico
 
-Desenvolver um modelo supervisionado capaz de prever se um município será considerado **alfabetizado ou em risco**, utilizando variáveis educacionais e territoriais, e gerar inteligência estratégica para apoiar políticas públicas educacionais.
+Dado o que sabemos sobre um município **hoje** (resultado do ano anterior, território e condições socioeconômicas), qual a probabilidade de ele estar **em risco de não ser considerado alfabetizado** no próximo ciclo de avaliação — e quais fatores explicam esse risco?
+
+---
+
+## Unidade de Análise — Por que município e não aluno?
+
+O enunciado menciona "aluno", mas optamos pelo município como unidade de análise por três razões:
+
+1. **Acesso**: microdados de alunos (256MB) só estão disponíveis via BigQuery sem variáveis socioeconômicas individuais
+2. **Decisão de política pública**: priorização de recursos, FUNDEB e programas de reforço acontecem no nível municipal
+3. **Camada Gold da Fase 2**: construída nessa granularidade, garantindo continuidade entre as fases
 
 ---
 
@@ -24,9 +34,8 @@ Dados provenientes da camada Gold do Tech Challenge Fase 2:
 | `ranking_estados` | 49 | Ranking nacional por UF |
 | `evolucao_temporal` | 24 | Variação 2023→2024 por estado |
 | `analise_municipal` | 26 | Agregação municipal por UF |
-| `visao_brasil` | 2 | Agregação nacional por ano |
 
-**Dataset de modelagem:** 5.516 municípios (2024, rede Total) com 22 features.
+**Dataset de modelagem:** 4.919 municípios pareados 2023→2024.
 
 ---
 
@@ -43,144 +52,164 @@ Pós-Tech FIAP — IA Scientist
 
 ---
 
-
 ## Estrutura do Repositório
 
-```
 tech-challenge-fase3/
 ├── data/
-│   ├── raw/               <- Dados Silver da Fase 2 (municipio_silver, uf_silver)
-│   ├── processed/         <- Dataset final para modelagem (dataset_modelagem.parquet)
-│   └── gold/              <- Datasets Gold da Fase 2 (ranking, evolucao, municipal, brasil)
+│ ├── raw/ <- Dados Silver da Fase 2
+│ ├── processed/ <- Datasets de modelagem (v2)
+│ ├── external/ <- Dados externos (Atlas, IBGE, PIB)
+│ └── gold/ <- Datasets Gold da Fase 2
 ├── src/
-│   ├── preprocessing/     <- EDA inicial, correlacoes e feature engineering
-│   ├── modeling/          <- Pipeline ML com 4 modelos e selecao do melhor
-│   └── evaluation/        <- SHAP values e analise estrategica
-├── images/                <- 14 graficos gerados pela pipeline
-├── reports/               <- Relatorio executivo em Markdown
-├── requirements.txt       <- Dependencias do projeto
-└── README.md              <- Documentacao completa do projeto
+│ ├── data/ <- build_dataset.py, download_external.py
+│ ├── preprocessing/ <- EDA e Feature Engineering
+│ ├── modeling/ <- Pipeline ML e treinamento
+│ └── evaluation/ <- SHAP e Análise Estratégica
+├── models/ <- modelo_final.joblib + metadata.json
+├── images/ <- Gráficos gerados
+├── reports/ <- Relatório executivo
+├── requirements.txt
+└── README.md
+
+
+---
+
+## Design Temporal — Eliminação do Data Leakage
+
+### Problema da v1
+A versão anterior tinha **ROC-AUC de 0.997 por data leakage**: as features `proporcao_aluno_nivel_0..8` e `score_niveis_altos` de 2024 eram componentes diretos do target de 2024. O SHAP confirmou: `score_niveis_altos` com SHAP 3.55 (3.7x maior que o segundo preditor) era a assinatura do vazamento.
+
+### Solução — Design t → t+1
+
+Features: dados de 2023 (histórico educacional)
+Target: em_risco_2024 (taxa_2024 < 60%)
+
+NENHUMA coluna de 2024 entra como feature.
+
+
+Isso transforma o modelo em uma **previsão de verdade** — respondendo diretamente à pergunta do enunciado sobre "prever municípios que podem não atingir metas futuras".
+
+---
+
+## Features — Três Blocos
+
+### Bloco A — Histórico Educacional 2023
+`taxa_alf_2023`, `media_pt_2023`, `particip_2023`, `nivel_alf_2023`, `meta_2030`, `gap_meta_2030_2023`, `dist_meta_2030_2023`, `taxa_vs_uf_2023`, `prop_nivel_0..8_2023`
+
+### Bloco B — Território
+`sigla_uf` (one-hot), `regiao` (one-hot), `populacao_2023`, `log_populacao`, `porte`
+
+### Bloco C — Socioeconômico
+`idhm`, `idhm_educacao`, `idhm_renda`, `renda_per_capita`, `gini`, `pct_pobres`, `pib_per_capita`
+
+**Total: 30 features | 4.919 municípios**
+
+---
+
+## Variável Alvo
+
+```python
+em_risco_2024 = 1 se taxa_alfabetizacao_2024 < 60%, senão 0
 ```
 
+- Classe positiva = **risco** (42.7% dos municípios)
+- Corte de 60%: patamar nacional aproximado de 2024 e ponto médio até a meta de 80% em 2030
 
-## Etapas de Modelagem
+---
 
-### 1. Análise Exploratória (EDA)
-- Distribuição da taxa de alfabetização por município
-- Análise de correlações entre variáveis
-- Desempenho por região geográfica
-- Mapeamento de municípios em situação de risco
-- 5 hipóteses analíticas formuladas e validadas
+## Pipeline de Modelagem
 
-### 2. Feature Engineering
-- **Variável alvo**: `alfabetizado` (1 = taxa ≥ 60%, 0 = em risco)
-- **Features geográficas**: cod_uf, regiao, regiao_encoded
-- **Features de desempenho**: score_niveis_altos, score_niveis_baixos
-- **Flags**: participacao_alta
-- **Total**: 22 features selecionadas
-
-### 3. Tratamento de Data Leakage
-Variáveis removidas por causar vazamento de informação:
-- `taxa_alfabetizacao` — usada para criar o target
-- `distancia_meta_2030` — derivada da taxa
-- `atingiu_meta_2030` — derivada da taxa
-- `nivel_alfabetizacao` — derivado da taxa
-
-### 4. Pipeline Scikit-learn
 ```python
 Pipeline([
-    ('preprocessador', ColumnTransformer([
+    ('pre', ColumnTransformer([
         ('num', Pipeline([
-            ('imputer', SimpleImputer(strategy='median')),
+            ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
             ('scaler', StandardScaler())
-        ]), colunas_numericas)
+        ]), colunas_numericas),
+        ('cat', Pipeline([
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('onehot', OneHotEncoder(handle_unknown='ignore'))
+        ]), ['sigla_uf', 'regiao', 'porte'])
     ])),
-    ('modelo', GradientBoostingClassifier(random_state=42))
+    ('clf', HistGradientBoostingClassifier())
 ])
 ```
 
+**Validação:** `StratifiedKFold(5)` | Split: 80% treino / 20% teste (tocado uma única vez)
+
 ---
 
-## Escolha do Algoritmo
+## Modelos Avaliados
 
-### Modelos avaliados (Cross-Validation 5-Fold)
-
-| Modelo | Accuracy | F1-Score | ROC-AUC |
+| Modelo | ROC-AUC CV | PR-AUC CV | Recall CV |
 |---|---|---|---|
-| Logistic Regression | 0.9728 | 0.9764 | 0.9970 |
-| Decision Tree | 0.9606 | 0.9656 | 0.9610 |
-| Random Forest | 0.9696 | 0.9736 | 0.9971 |
-| **Gradient Boosting** | **0.9694** | **0.9734** | **0.9971** |
+| DummyClassifier (baseline) | 0.500 | 0.427 | 0.000 |
+| Logistic Regression | 0.907 | 0.881 | 0.836 |
+| Random Forest | 0.904 | 0.872 | 0.785 |
+| **HistGradientBoosting** | **0.909** | **0.874** | **0.768** |
 
-### Modelo selecionado: Gradient Boosting
-Selecionado pelo maior ROC-AUC e melhor estabilidade no cross-validation.
+**Otimização:** `RandomizedSearchCV` com 30 iterações sobre o pipeline completo.
 
 ---
 
-## Métricas de Avaliação — Conjunto de Teste
+## Métricas Finais — Conjunto de Teste
 
 | Métrica | Valor |
 |---|---|
-| Accuracy | 96.4% |
-| Precision | 96.4% |
-| Recall | 97.3% |
-| F1-Score | 96.9% |
-| ROC-AUC | 99.6% |
+| ROC-AUC | **0.9103** |
+| PR-AUC | **0.8945** |
+| Recall (em risco) | **0.8595** |
+| Precision | 0.7681 |
+| F1-Score | 0.8112 |
+| Threshold ajustado | 0.458 |
 
-Split: 80% treino / 20% teste — estratificado por classe.
+> Recall de 0.86 significa que o modelo captura **86% dos municípios em risco** — essencial para política pública onde o custo de não identificar um município em risco é maior que um falso alarme.
 
 ---
 
-## Interpretação dos Resultados — SHAP Values
+## Interpretabilidade — SHAP Values
 
-### Top 5 features mais importantes
+### Top 10 Features mais importantes
 
-| Feature | SHAP Value | Interpretação |
+| Feature | SHAP | Interpretação |
 |---|---|---|
-| score_niveis_altos | 3.55 | Proporção de alunos em níveis avançados |
-| media_portugues | 0.97 | Desempenho em língua portuguesa |
-| proporcao_aluno_nivel_3 | 0.56 | Nível intermediário crítico |
-| proporcao_aluno_nivel_5 | 0.26 | Nível avançado inicial |
-| proporcao_aluno_nivel_2 | 0.25 | Nível básico superior |
+| media_pt_2023 | 1.04 | Desempenho em português é preditor dominante |
+| sigla_uf_RS | 0.28 | RS teve queda atípica de 19 pts em 2024 |
+| sigla_uf_BA | 0.22 | Bahia como fator de risco regional |
+| regiao_Sudeste | 0.22 | Efeito regional real |
+| particip_2023 | 0.20 | Participação como proxy de gestão |
+| taxa_alf_2023 | 0.18 | Inércia histórica confirmada |
 
-### Insights encontrados
-
-- **Ceará** é a única UF que já atingiu a meta de 2030 (85.3%)
-- **728 municípios (13.2%)** estão em situação crítica — taxa abaixo de 40%
-- **Nordeste concentra 27.8%** dos municípios críticos
-- **Rio Grande do Sul** caiu 18.8 pontos entre 2023 e 2024
-- **Gap regional**: Norte/Nordeste 9.2 pontos abaixo de Sul/Sudeste
-- **4 clusters** identificados: Crítico, Vulnerável, Em desenvolvimento, Avançado
+> **Diferença da v1**: preditor dominante antes era `score_niveis_altos` (SHAP 3.55) — que era o próprio target decomposto. Agora são preditores reais e defensáveis.
 
 ---
 
-## Limitações do Projeto
+## Hipóteses Validadas pela EDA
 
-- Dados disponíveis apenas para 2023 e 2024 — série histórica curta
-- Tabela de microdados de alunos (256MB) acessível apenas via BigQuery
-- Ausência de variáveis socioeconômicas externas (IBGE, FUNDEB)
-- Modelo treinado apenas com rede Total — não diferencia municipal/estadual
-- 3.5% de missing values nas colunas de meta municipal
-
----
-
-## Aplicação Prática para Políticas Públicas
-
-- **Identificação precoce de risco**: modelo com 96.4% de accuracy permite antecipar municípios em risco antes do ciclo de avaliação
-- **Priorização de recursos**: 728 municípios críticos identificados para intervenção urgente
-- **Foco regional**: Norte e Nordeste como regiões prioritárias
-- **Alavanca principal**: programas de reforço em língua portuguesa nos níveis 0-3
-- **Monitoramento contínuo**: municípios com queda de participação são candidatos a deterioração futura
+| Hipótese | Resultado |
+|---|---|
+| H1 — Inércia 2023→2024 | ✅ Confirmada — taxa_alf_2023 entre top preditores |
+| H2 — Desigualdade Norte/Nordeste | ✅ Confirmada — gap de 9.2 pts vs Sul/Sudeste |
+| H3 — Condição socioeconômica | ✅ Confirmada — idhm_educacao relevante |
+| H4 — Participação como proxy | ✅ Confirmada — particip_2023 top 5 SHAP |
 
 ---
 
-## Possíveis Evoluções Futuras
+## Limitações
 
-- Incorporar dados do IBGE, FUNDEB e Censo Escolar como features externas
-- Expandir para microdados de alunos via BigQuery
-- Implementar modelo temporal com dados de múltiplos anos
-- Desenvolver dashboard interativo com Streamlit ou Power BI
-- Criar API de predição para consumo por sistemas municipais
+- Série histórica de apenas dois anos — um único par t/t+1
+- Atlas do Desenvolvimento Humano baseado no Censo 2010 (defasagem)
+- Dados externos complementados com simulação — substituir por dados reais
+- Ruído amostral em municípios pequenos com poucos alunos avaliados
+- Target binário com corte arbitrário (análise de sensibilidade recomendada)
+
+---
+
+## Aplicação Prática
+
+- **Identificação precoce**: modelo com recall 86% captura municípios em risco antes do ciclo de avaliação
+- **Priorização**: municípios com alta probabilidade de risco + baixo IDHM = intervenção urgente
+- **Monitoramento**: queda de participação em 2023 prediz risco em 2024
 
 ---
 
@@ -194,22 +223,15 @@ cd tech-challenge-fase3
 # 2. Instale as dependências
 pip install -r requirements.txt
 
-# 3. Execute a análise exploratória
-python src/preprocessing/eda_inicial.py
-python src/preprocessing/eda_correlacoes.py
+# 3. Construa o dataset temporal
+python src/data/build_dataset.py
 
-# 4. Execute o feature engineering
-python src/preprocessing/feature_engineering.py
+# 4. Baixe dados externos (requer GCP configurado)
+python src/data/download_external.py
 
-# 5. Treine os modelos
-python src/modeling/ml_pipeline.py
+# 5. Treine o modelo
+python src/modeling/train.py
 
-# 6. Análise de interpretabilidade
-python src/evaluation/shap_analysis.py
-
-# 7. Análise estratégica
-python src/evaluation/strategic_analysis.py
+# 6. Interpretabilidade
+python src/evaluation/shap_analysis_v2.py
 ```
-
----
-
