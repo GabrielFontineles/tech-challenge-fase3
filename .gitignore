@@ -1,31 +1,37 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
+.pytest_cache/
 .env
 venv/
 env/
+.venv/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb_checkpoints
 
-# Data
-*.csv
-*.parquet
-*.xlsx
+# Dados (não versionados — ver data/README.md para obtenção)
+data/raw/*
+data/gold/*
+data/processed/*
+data/external/raw/*
+data/external/processed/*
 !data/**/.gitkeep
+!data/README.md
 
-# AWS
+# Modelos: o modelo final PEQUENO é versionado de propósito (reprodutibilidade dos notebooks 04/05)
+models/*
+!models/.gitkeep
+!models/modelo_final.joblib
+!models/modelo_final_calibrado.joblib
+!models/metadata.json
+
+# Credenciais
 .aws/
 *.pem
 credentials.json
+*.json.key
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Models
-*.pkl
-*.joblib
-*.h5
