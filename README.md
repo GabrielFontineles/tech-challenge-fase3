@@ -54,63 +54,28 @@ Pós-Tech FIAP — IA Scientist
 
 ## Estrutura do Repositório
 
+```
 tech-challenge-fase3/
 ├── data/
-│ ├── raw/ <- Dados Silver da Fase 2
-│ ├── processed/ <- Datasets de modelagem (v2)
-│ ├── external/ <- Dados externos (Atlas, IBGE, PIB)
-│ └── gold/ <- Datasets Gold da Fase 2
+│   ├── raw/               <- Dados Silver da Fase 2
+│   ├── processed/         <- Datasets de modelagem (v2)
+│   ├── external/          <- Dados externos (Atlas, IBGE, PIB)
+│   └── gold/              <- Datasets Gold da Fase 2
 ├── src/
-│ ├── data/ <- build_dataset.py, download_external.py
-│ ├── preprocessing/ <- EDA e Feature Engineering
-│ ├── modeling/ <- Pipeline ML e treinamento
-│ └── evaluation/ <- SHAP e Análise Estratégica
-├── models/ <- modelo_final.joblib + metadata.json
-├── images/ <- Gráficos gerados
-├── reports/ <- Relatório executivo
-├── requirements.txt
-└── README.md
-
-
----
-
-## Design Temporal — Eliminação do Data Leakage
-
-### Problema da v1
-A versão anterior tinha **ROC-AUC de 0.997 por data leakage**: as features `proporcao_aluno_nivel_0..8` e `score_niveis_altos` de 2024 eram componentes diretos do target de 2024. O SHAP confirmou: `score_niveis_altos` com SHAP 3.55 (3.7x maior que o segundo preditor) era a assinatura do vazamento.
-
-### Solução — Design t → t+1
-
-Features: dados de 2023 (histórico educacional)
-Target: em_risco_2024 (taxa_2024 < 60%)
-
-NENHUMA coluna de 2024 entra como feature.
-
-
-Isso transforma o modelo em uma **previsão de verdade** — respondendo diretamente à pergunta do enunciado sobre "prever municípios que podem não atingir metas futuras".
-
----
-
-## Features — Três Blocos
-
-### Bloco A — Histórico Educacional 2023
-`taxa_alf_2023`, `media_pt_2023`, `particip_2023`, `nivel_alf_2023`, `meta_2030`, `gap_meta_2030_2023`, `dist_meta_2030_2023`, `taxa_vs_uf_2023`, `prop_nivel_0..8_2023`
-
-### Bloco B — Território
-`sigla_uf` (one-hot), `regiao` (one-hot), `populacao_2023`, `log_populacao`, `porte`
-
-### Bloco C — Socioeconômico
-`idhm`, `idhm_educacao`, `idhm_renda`, `renda_per_capita`, `gini`, `pct_pobres`, `pib_per_capita`
-
-**Total: 30 features | 4.919 municípios**
-
----
-
-## Variável Alvo
-
-```python
-em_risco_2024 = 1 se taxa_alfabetizacao_2024 < 60%, senão 0
+│   ├── data/              <- build_dataset.py, download_external.py
+│   ├── preprocessing/     <- EDA e Feature Engineering
+│   ├── modeling/          <- Pipeline ML e treinamento
+│   └── evaluation/        <- SHAP e Analise Estrategica
+├── models/                <- modelo_final.joblib + metadata.json
+├── notebooks/             <- Notebooks narrados 01-04
+├── tests/                 <- Testes pytest
+├── images/                <- Graficos gerados
+├── reports/               <- Relatorio executivo
+├── Makefile               <- Comandos de reproducibilidade
+├── requirements.txt       <- Dependencias do projeto
+└── README.md              <- Documentacao completa
 ```
+
 
 - Classe positiva = **risco** (42.7% dos municípios)
 - Corte de 60%: patamar nacional aproximado de 2024 e ponto médio até a meta de 80% em 2030
