@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-09-30T19:12:07.155222",
+  "versao": "2.1",
+  "variante": "sem_historico",
+  "modelo": "HistGradientBoosting",
+  "design": "features_2023_target_2024",
+  "target": "em_risco_2024",
+  "corte_risco": 60.0,
+  "threshold": 0.40258347201997086,
+  "recall_minimo": 0.85,
+  "criterio_selecao": "maior PR-AUC medio em CV 5-fold estratificado",
+  "calibracao": "CalibratedClassifierCV, metodo isotonic, cv 5-fold",
+  "features_numericas": [
+    "log_populacao_2022",
+    "densidade_2022",
+    "log_pib_per_capita",
+    "idhm",
+    "idhm_educacao",
+    "idhm_renda",
+    "idhm_longevidade",
+    "renda_per_capita_2010",
+    "gini",
+    "pct_pobres",
+    "pct_extremamente_pobres",
+    "analfabetismo_15mais",
+    "expectativa_anos_estudo",
+    "freq_escolar_4a5",
+    "pct_rural"
+  ],
+  "features_categoricas": [
+    "sigla_uf",
+    "regiao",
+    "porte"
+  ],
+  "fontes_externas": {
+    "IBGE Censo 2022 (SIDRA tabela 4714)": [
+      "log_populacao_2022",
+      "densidade_2022",
+      "porte"
+    ],
+    "IBGE PIB dos Municipios 2021 (SIDRA tabela 5938)": [
+      "log_pib_per_capita"
+    ],
+    "Atlas do Desenvolvimento Humano 2010": [
+      "idhm",
+      "idhm_educacao",
+      "idhm_renda",
+      "idhm_longevidade",
+      "renda_per_capita_2010",
+      "gini",
+      "pct_pobres",
+      "pct_extremamente_pobres",
+      "analfabetismo_15mais",
+      "expectativa_anos_estudo",
+      "freq_escolar_4a5",
+      "pct_rural"
+    ]
+  },
+  "busca_hiperparametros": {
+    "HistGradientBoosting": {
+      "pr_auc_cv": 0.855886446700295,
+      "pr_auc_treino": 0.8926765656595078,
+      "gap_treino_cv": 0.0367901189592128,
+      "melhores_parametros": {
+        "clf__min_samples_leaf": 20,
+        "clf__max_iter": 200,
+        "clf__max_depth": 3,
+        "clf__learning_rate": 0.05,
+        "clf__l2_regularization": 0.0,
+        "clf__class_weight": "balanced"
+      }
+    },
+    "Logistic Regression": {
+      "pr_auc_cv": 0.8542762507810773,
+      "pr_auc_treino": 0.8684602297950667,
+      "gap_treino_cv": 0.014183979013989378,
+      "melhores_parametros": {
+        "clf__C": 3.4702669886504163,
+        "clf__class_weight": null
+      }
+    }
+  },
+  "metricas_teste": {
+    "roc_auc": 0.8930027862208714,
+    "pr_auc": 0.8673743581924991,
+    "recall": 0.8928571428571429,
+    "precision": 0.7048872180451128,
+    "f1": 0.7878151260504201,
+    "brier_calibrado": 0.13047786410726206,
+    "brier_sem_calibracao": 0.13526163343410544,
+    "threshold": 0.40258347201997086
+  }
+}
