@@ -18,6 +18,7 @@ e feita a partir das tabelas geradas em reports/.
 Uso:
     python src/evaluation/shap_analysis_v2.py
     python src/evaluation/shap_analysis_v2.py --sem-historico
+    python src/evaluation/shap_analysis_v2.py --so-socioeconomico
 """
 
 import argparse
@@ -176,10 +177,16 @@ def graficos(shap_values, X_test_proc, mapa, por_grupo, permutacao, sufixo, titu
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sem-historico", action="store_true")
+    opcoes = parser.add_mutually_exclusive_group()
+    opcoes.add_argument("--sem-historico", action="store_true")
+    opcoes.add_argument("--so-socioeconomico", action="store_true")
     args = parser.parse_args()
-    sufixo = "_sem_historico" if args.sem_historico else ""
-    titulo = "modelo sem historico" if args.sem_historico else "modelo completo"
+    if args.so_socioeconomico:
+        sufixo, titulo = "_socioeconomico", "modelo so socioeconomico"
+    elif args.sem_historico:
+        sufixo, titulo = "_sem_historico", "modelo sem historico"
+    else:
+        sufixo, titulo = "", "modelo completo"
 
     print("=" * 60)
     print(f"INTERPRETABILIDADE v2.1 — {titulo.upper()}")

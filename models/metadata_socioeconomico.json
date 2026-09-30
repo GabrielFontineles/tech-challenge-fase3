@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-09-30T19:47:58.060636",
+  "versao": "2.1",
+  "variante": "socioeconomico",
+  "modelo": "HistGradientBoosting",
+  "design": "features_2023_target_2024",
+  "target": "em_risco_2024",
+  "corte_risco": 60.0,
+  "threshold": 0.29281315877210395,
+  "recall_minimo": 0.85,
+  "criterio_selecao": "maior PR-AUC medio em CV 5-fold estratificado",
+  "calibracao": "CalibratedClassifierCV, metodo isotonic, cv 5-fold",
+  "features_numericas": [
+    "log_pib_per_capita",
+    "idhm",
+    "idhm_educacao",
+    "idhm_renda",
+    "idhm_longevidade",
+    "renda_per_capita_2010",
+    "gini",
+    "pct_pobres",
+    "pct_extremamente_pobres",
+    "analfabetismo_15mais",
+    "expectativa_anos_estudo",
+    "freq_escolar_4a5",
+    "pct_rural"
+  ],
+  "features_categoricas": [],
+  "fontes_externas": {
+    "IBGE Censo 2022 (SIDRA tabela 4714)": [
+      "log_populacao_2022",
+      "densidade_2022",
+      "porte"
+    ],
+    "IBGE PIB dos Municipios 2021 (SIDRA tabela 5938)": [
+      "log_pib_per_capita"
+    ],
+    "Atlas do Desenvolvimento Humano 2010": [
+      "idhm",
+      "idhm_educacao",
+      "idhm_renda",
+      "idhm_longevidade",
+      "renda_per_capita_2010",
+      "gini",
+      "pct_pobres",
+      "pct_extremamente_pobres",
+      "analfabetismo_15mais",
+      "expectativa_anos_estudo",
+      "freq_escolar_4a5",
+      "pct_rural"
+    ]
+  },
+  "busca_hiperparametros": {
+    "HistGradientBoosting": {
+      "pr_auc_cv": 0.6860237775974775,
+      "pr_auc_treino": 0.8079751999897793,
+      "gap_treino_cv": 0.12195142239230183,
+      "melhores_parametros": {
+        "clf__min_samples_leaf": 80,
+        "clf__max_iter": 100,
+        "clf__max_depth": null,
+        "clf__learning_rate": 0.02,
+        "clf__l2_regularization": 0.1,
+        "clf__class_weight": "balanced"
+      }
+    },
+    "Logistic Regression": {
+      "pr_auc_cv": 0.6236143593927101,
+      "pr_auc_treino": 0.631119589058947,
+      "gap_treino_cv": 0.007505229666236901,
+      "melhores_parametros": {
+        "clf__C": 3.4702669886504163,
+        "clf__class_weight": null
+      }
+    }
+  },
+  "metricas_teste": {
+    "roc_auc": 0.7865395981087471,
+    "pr_auc": 0.7046704251909695,
+    "recall": 0.9071428571428571,
+    "precision": 0.5419630156472262,
+    "f1": 0.678539626001781,
+    "brier_calibrado": 0.18763250666101272,
+    "brier_sem_calibracao": 0.1951163235148612,
+    "threshold": 0.29281315877210395
+  }
+}
