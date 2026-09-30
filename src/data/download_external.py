@@ -83,6 +83,9 @@ def baixar_populacao_censo2022():
         sys.exit(f"ERRO: variaveis inesperadas na tabela 4714: {list(wide.columns)}")
 
     wide = wide.rename(columns=mapa)[["id_municipio"] + sorted(esperadas)]
+    nomes = (df[["id_municipio", "D1N"]].drop_duplicates("id_municipio")
+             .rename(columns={"D1N": "nome_municipio"}))
+    wide = wide.merge(nomes, on="id_municipio", how="left")
     wide["log_populacao_2022"] = np.log(wide["populacao_2022"])
     wide["porte"] = pd.cut(
         wide["populacao_2022"],
