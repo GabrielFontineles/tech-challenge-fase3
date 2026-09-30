@@ -1,32 +1,16 @@
 {
-  "timestamp": "2026-09-30T19:05:28.499638",
+  "timestamp": "2026-09-30T19:12:07.155222",
   "versao": "2.1",
-  "variante": "completo",
+  "variante": "sem_historico",
   "modelo": "HistGradientBoosting",
   "design": "features_2023_target_2024",
   "target": "em_risco_2024",
   "corte_risco": 60.0,
-  "threshold": 0.431326812687996,
+  "threshold": 0.40258347201997086,
   "recall_minimo": 0.85,
   "criterio_selecao": "maior PR-AUC medio em CV 5-fold estratificado",
   "calibracao": "CalibratedClassifierCV, metodo isotonic, cv 5-fold",
   "features_numericas": [
-    "taxa_alf_2023",
-    "media_pt_2023",
-    "particip_2023",
-    "nivel_alf_2023",
-    "meta_2030",
-    "gap_meta_2030_2023",
-    "taxa_vs_uf_2023",
-    "prop_nivel_0_2023",
-    "prop_nivel_1_2023",
-    "prop_nivel_2_2023",
-    "prop_nivel_3_2023",
-    "prop_nivel_4_2023",
-    "prop_nivel_5_2023",
-    "prop_nivel_6_2023",
-    "prop_nivel_7_2023",
-    "prop_nivel_8_2023",
     "log_populacao_2022",
     "densidade_2022",
     "log_pib_per_capita",
@@ -74,36 +58,36 @@
   },
   "busca_hiperparametros": {
     "HistGradientBoosting": {
-      "pr_auc_cv": 0.8972444224305873,
-      "pr_auc_treino": 0.9298550468285278,
-      "gap_treino_cv": 0.03261062439794049,
+      "pr_auc_cv": 0.855886446700295,
+      "pr_auc_treino": 0.8926765656595078,
+      "gap_treino_cv": 0.0367901189592128,
       "melhores_parametros": {
-        "clf__min_samples_leaf": 80,
+        "clf__min_samples_leaf": 20,
         "clf__max_iter": 200,
-        "clf__max_depth": 5,
-        "clf__learning_rate": 0.02,
-        "clf__l2_regularization": 1.0,
+        "clf__max_depth": 3,
+        "clf__learning_rate": 0.05,
+        "clf__l2_regularization": 0.0,
         "clf__class_weight": "balanced"
       }
     },
     "Logistic Regression": {
-      "pr_auc_cv": 0.8870555346342887,
-      "pr_auc_treino": 0.8977543683701932,
-      "gap_treino_cv": 0.010698833735904523,
+      "pr_auc_cv": 0.8542762507810773,
+      "pr_auc_treino": 0.8684602297950667,
+      "gap_treino_cv": 0.014183979013989378,
       "melhores_parametros": {
-        "clf__C": 0.37253938395788866,
+        "clf__C": 3.4702669886504163,
         "clf__class_weight": null
       }
     }
   },
   "metricas_teste": {
-    "roc_auc": 0.9171120398514014,
-    "pr_auc": 0.9048828581805257,
-    "recall": 0.8833333333333333,
-    "precision": 0.7697095435684648,
-    "f1": 0.8226164079822617,
-    "brier_calibrado": 0.11187023384380572,
-    "brier_sem_calibracao": 0.11350564115117155,
-    "threshold": 0.431326812687996
+    "roc_auc": 0.8930027862208714,
+    "pr_auc": 0.8673743581924991,
+    "recall": 0.8928571428571429,
+    "precision": 0.7048872180451128,
+    "f1": 0.7878151260504201,
+    "brier_calibrado": 0.13047786410726206,
+    "brier_sem_calibracao": 0.13526163343410544,
+    "threshold": 0.40258347201997086
   }
 }
