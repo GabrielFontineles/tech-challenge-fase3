@@ -1,194 +1,217 @@
 """
-SHAP Analysis v2 — Carrega modelo salvo e analisa interpretabilidade
+Interpretabilidade do modelo — v2.1
 Fase 3 — Tech Challenge FIAP
 
-Usa o modelo persistido em models/modelo_final.joblib.
-Extrai nomes reais das features do ColumnTransformer.
+1. SHAP Values do modelo base (sem calibracao), por feature e agregados por grupo
+2. Importancia por permutacao em grupo, no conjunto de teste, usando o
+   modelo calibrado (queda de PR-AUC ao embaralhar juntas as colunas do grupo)
+
+Grupos de features:
+- Historico educacional 2023 (Bloco A)
+- Estado e regiao (sigla_uf, regiao)
+- Porte e densidade (IBGE Censo 2022)
+- Socioeconomico (Atlas 2010 e PIB 2021)
+
+O script apenas calcula e exporta os resultados; a interpretacao
+e feita a partir das tabelas geradas em reports/.
+
+Uso:
+    python src/evaluation/shap_analysis_v2.py
+    python src/evaluation/shap_analysis_v2.py --sem-historico
 """
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import shap
-import joblib
+import argparse
 import json
 from pathlib import Path
+
+import joblib
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import shap
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import average_precision_score
 from sklearn.model_selection import train_test_split
 
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-IMAGES_DIR = Path("images")
+RANDOM_STATE = 42
+TARGET = "em_risco_2024"
+N_REPETICOES = 10
+DATASET = Path("data/processed/dataset_enriquecido_v2.parquet")
 MODELS_DIR = Path("models")
-TARGET = 'em_risco_2024'
+IMAGES_DIR = Path("images")
+REPORTS_DIR = Path("reports")
 
-def carregar_modelo_e_dados():
-    """Carrega modelo salvo e dataset."""
-    print("Carregando modelo salvo...")
-    pipeline = joblib.load(MODELS_DIR / "modelo_final.joblib")
 
-    with open(MODELS_DIR / "metadata.json", encoding='utf-8') as f:
+def carregar(sufixo):
+    """Carrega modelos, metadata e reconstroi o mesmo split do treino."""
+    with open(MODELS_DIR / f"metadata{sufixo}.json", encoding="utf-8") as f:
         metadata = json.load(f)
+    modelo_base = joblib.load(MODELS_DIR / f"modelo_base{sufixo}.joblib")
+    modelo_final = joblib.load(MODELS_DIR / f"modelo_final{sufixo}.joblib")
 
-    threshold = metadata['threshold']
-    features_num = metadata['features_numericas']
-    features_cat = metadata['features_categoricas']
-    print(f"  Modelo: {metadata['modelo']}")
-    print(f"  Threshold: {threshold:.3f}")
+    numericas = metadata["features_numericas"]
+    categoricas = metadata["features_categoricas"]
+    df = pd.read_parquet(DATASET)
+    X = df[numericas + categoricas]
+    y = df[TARGET].astype(int)
+    X_train, X_test, _, y_test = train_test_split(
+        X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE)
 
-    print("\nCarregando dataset...")
-    caminho = Path("data/processed/dataset_enriquecido_v2.parquet")
-    if not caminho.exists():
-        caminho = Path("data/processed/dataset_modelagem_v2.parquet")
-    df = pd.read_parquet(caminho)
+    print(f"Modelo: {metadata['modelo']} | variante: {metadata['variante']}")
+    print(f"Teste: {len(X_test)} municipios")
+    return metadata, modelo_base, modelo_final, X_train, X_test, y_test
 
-    features_all = [f for f in features_num + features_cat if f in df.columns]
-    X = df[features_all]
-    y = df[TARGET]
 
-    _, X_test, _, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
+def grupo_da_feature(original, metadata):
+    if original in ("sigla_uf", "regiao"):
+        return "Estado e regiao"
+    fontes = metadata["fontes_externas"]
+    censo = next(v for k, v in fontes.items() if "Censo 2022" in k)
+    if original in censo:
+        return "Porte e densidade"
+    socio = [c for k, v in fontes.items() if "Censo 2022" not in k for c in v]
+    if original in socio:
+        return "Socioeconomico"
+    return "Historico educacional 2023"
 
-    return pipeline, X_test, y_test, threshold, features_num, features_cat
 
-def extrair_nomes_features(pipeline, features_num, features_cat):
-    """
-    Extrai nomes reais das features após transformação pelo ColumnTransformer.
-    Lida com add_indicator=True que adiciona colunas extras de missing.
-    """
-    preprocessador = pipeline.named_steps['pre']
+def mapear_features(modelo_base, metadata):
+    """Relaciona cada coluna transformada a sua feature original e grupo."""
+    categoricas = metadata["features_categoricas"]
+    linhas = []
+    for nome in modelo_base.named_steps["pre"].get_feature_names_out():
+        transformador, resto = nome.split("__", 1)
+        if transformador == "num":
+            original = resto.replace("missingindicator_", "", 1)
+        else:
+            original = next(c for c in categoricas if resto.startswith(c + "_"))
+        linhas.append({"feature": resto, "feature_original": original,
+                       "grupo": grupo_da_feature(original, metadata)})
+    return pd.DataFrame(linhas)
 
-    nomes = []
 
-    # Transformer numérico
-    num_transformer = preprocessador.named_transformers_['num']
-    imputer = num_transformer.named_steps['imputer']
+def calcular_shap(modelo_base, X_train, X_test):
+    pre = modelo_base.named_steps["pre"]
+    clf = modelo_base.named_steps["clf"]
+    X_train_proc = pre.transform(X_train)
+    X_test_proc = pre.transform(X_test)
 
-    # Features numéricas originais
-    for f in features_num:
-        nomes.append(f)
+    if isinstance(clf, LogisticRegression):
+        explainer = shap.LinearExplainer(clf, X_train_proc)
+    else:
+        explainer = shap.TreeExplainer(clf)
+    valores = explainer.shap_values(X_test_proc)
+    if isinstance(valores, list):
+        valores = valores[1]
+    valores = np.asarray(valores)
+    if valores.ndim == 3:
+        valores = valores[:, :, 1]
+    return valores, X_test_proc
 
-    # Indicadores de missing (add_indicator=True)
-    if hasattr(imputer, 'indicator_') and imputer.indicator_ is not None:
-        features_missing = [features_num[i]
-                           for i in imputer.indicator_.features_]
-        for f in features_missing:
-            nomes.append(f"missing_{f}")
 
-    # Transformer categórico (se existir)
-    if 'cat' in preprocessador.named_transformers_:
-        cat_transformer = preprocessador.named_transformers_['cat']
-        encoder = cat_transformer.named_steps['onehot']
-        cat_names = encoder.get_feature_names_out(features_cat)
-        nomes.extend(cat_names)
+def permutacao_por_grupo(modelo_final, X_test, y_test, metadata):
+    """Queda de PR-AUC ao embaralhar juntas as colunas originais de cada grupo."""
+    colunas = metadata["features_numericas"] + metadata["features_categoricas"]
+    grupos = {}
+    for c in colunas:
+        grupos.setdefault(grupo_da_feature(c, metadata), []).append(c)
 
-    return nomes
+    referencia = average_precision_score(y_test, modelo_final.predict_proba(X_test)[:, 1])
+    rng = np.random.default_rng(RANDOM_STATE)
+    linhas = []
+    for grupo, cols in grupos.items():
+        quedas = []
+        for _ in range(N_REPETICOES):
+            X_perm = X_test.copy()
+            ordem = rng.permutation(len(X_perm))
+            X_perm[cols] = X_test[cols].values[ordem]
+            quedas.append(referencia - average_precision_score(
+                y_test, modelo_final.predict_proba(X_perm)[:, 1]))
+        linhas.append({"grupo": grupo, "n_features": len(cols),
+                       "queda_pr_auc_media": float(np.mean(quedas)),
+                       "queda_pr_auc_std": float(np.std(quedas))})
+    tabela = pd.DataFrame(linhas).sort_values("queda_pr_auc_media", ascending=False)
+    return tabela, referencia
 
-def calcular_shap(pipeline, X_test, feature_names):
-    """Calcula SHAP Values."""
-    print("\nCalculando SHAP Values...")
 
-    preprocessador = pipeline.named_steps['pre']
-    modelo = pipeline.named_steps['clf']
-
-    X_test_proc = preprocessador.transform(X_test)
-
-    print(f"  Features após transformação: {X_test_proc.shape[1]}")
-    print(f"  Nomes extraídos: {len(feature_names)}")
-
-    # Ajusta se houver discrepância
-    if X_test_proc.shape[1] != len(feature_names):
-        print(f"  ⚠️  Discrepância — usando índices genéricos")
-        feature_names = [f"feature_{i}" for i in range(X_test_proc.shape[1])]
-
-    explainer = shap.TreeExplainer(modelo)
-    shap_values = explainer.shap_values(X_test_proc)
-
-    print(f"  ✓ SHAP calculado para {len(X_test_proc)} amostras")
-    return explainer, shap_values, X_test_proc, feature_names
-
-def plotar_importancia_global(shap_values, X_test_proc, feature_names):
-    """Bar plot de importância global com nomes reais."""
-    print("\nGerando gráficos SHAP...")
-
+def graficos(shap_values, X_test_proc, mapa, por_grupo, permutacao, sufixo, titulo):
     importancia = np.abs(shap_values).mean(axis=0)
-    n_top = min(15, len(feature_names))
-    indices = np.argsort(importancia)[::-1][:n_top]
-
+    top = np.argsort(importancia)[::-1][:15]
     fig, ax = plt.subplots(figsize=(10, 8))
-    cores = ['#d32f2f' if importancia[i] > np.median(importancia)
-             else '#90a4ae' for i in indices]
-
-    ax.barh(range(n_top), importancia[indices][::-1],
-            color=cores[::-1], alpha=0.85)
-    ax.set_yticks(range(n_top))
-    ax.set_yticklabels([feature_names[i] for i in indices[::-1]], fontsize=9)
-    ax.set_xlabel('Mean |SHAP Value|')
-    ax.set_title('Top 15 Features — SHAP Importance\nModelo v2 (Design Temporal Correto)',
-                 fontsize=13)
+    ax.barh(range(len(top)), importancia[top][::-1], color="steelblue", alpha=0.85)
+    ax.set_yticks(range(len(top)))
+    ax.set_yticklabels(mapa["feature"].values[top][::-1], fontsize=9)
+    ax.set_xlabel("Media |SHAP| (log-odds)")
+    ax.set_title(f"Top 15 features — SHAP\n{titulo}")
     plt.tight_layout()
-    plt.savefig(IMAGES_DIR / '16_shap_importance_v2.png', dpi=150)
+    plt.savefig(IMAGES_DIR / f"16_shap_importancia_v21{sufixo}.png", dpi=150)
     plt.close()
-    print("  ✓ Gráfico salvo: images/16_shap_importance_v2.png")
 
-    # Summary plot
     plt.figure(figsize=(12, 8))
-    shap.summary_plot(shap_values, X_test_proc,
-                      feature_names=feature_names,
-                      show=False, max_display=15)
-    plt.title('SHAP Summary Plot v2', fontsize=13)
+    shap.summary_plot(shap_values, X_test_proc, feature_names=list(mapa["feature"]),
+                      max_display=15, show=False)
+    plt.title(f"SHAP summary — {titulo}")
     plt.tight_layout()
-    plt.savefig(IMAGES_DIR / '17_shap_summary_v2.png', dpi=150,
-                bbox_inches='tight')
+    plt.savefig(IMAGES_DIR / f"17_shap_summary_v21{sufixo}.png", dpi=150, bbox_inches="tight")
     plt.close()
-    print("  ✓ Gráfico salvo: images/17_shap_summary_v2.png")
 
-    return indices, importancia
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+    axes[0].barh(por_grupo["grupo"][::-1], por_grupo["participacao_pct"][::-1],
+                 color="steelblue", alpha=0.85)
+    axes[0].set(title="Participacao no SHAP total (%)", xlabel="%")
+    axes[1].barh(permutacao["grupo"][::-1], permutacao["queda_pr_auc_media"][::-1],
+                 xerr=permutacao["queda_pr_auc_std"][::-1], color="darkorange", alpha=0.85)
+    axes[1].set(title="Queda de PR-AUC ao embaralhar o grupo", xlabel="Queda de PR-AUC")
+    fig.suptitle(f"Importancia por grupo de features — {titulo}")
+    plt.tight_layout()
+    plt.savefig(IMAGES_DIR / f"21_importancia_grupos_v21{sufixo}.png", dpi=150)
+    plt.close()
+    print(f"Graficos salvos com sufixo '_v21{sufixo}'")
 
-def interpretar_resultados(feature_names, indices, importancia):
-    """Interpreta top features com nomes reais."""
-    print("\n" + "=" * 60)
-    print("TOP 10 FEATURES MAIS IMPORTANTES (v2)")
-    print("=" * 60)
-
-    for i, idx in enumerate(indices[:10]):
-        print(f"  {i+1:2d}. {feature_names[idx]:<40} SHAP: {importancia[idx]:.4f}")
-
-    print("""
-📊 Interpretação para políticas públicas:
-
-  • O preditor dominante é o histórico educacional de 2023
-    (taxa_alf_2023, media_pt_2023, gap_meta_2030_2023)
-  • Fatores socioeconômicos (idhm, idhm_educacao) confirmam H2 e H3
-  • Participação em 2023 é proxy de gestão municipal
-  • Diferença da v1: sem leakage — resultado defensável
-
-  💡 Para política pública: municípios com taxa_alf_2023 baixa
-     E idhm_educacao baixo são os de maior risco composto.
-    """)
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sem-historico", action="store_true")
+    args = parser.parse_args()
+    sufixo = "_sem_historico" if args.sem_historico else ""
+    titulo = "modelo sem historico" if args.sem_historico else "modelo completo"
+
     print("=" * 60)
-    print("SHAP ANALYSIS v2 — NOMES REAIS DAS FEATURES")
+    print(f"INTERPRETABILIDADE v2.1 — {titulo.upper()}")
     print("=" * 60)
+    metadata, modelo_base, modelo_final, X_train, X_test, y_test = carregar(sufixo)
 
-    pipeline, X_test, y_test, threshold, features_num, features_cat = \
-        carregar_modelo_e_dados()
+    mapa = mapear_features(modelo_base, metadata)
+    shap_values, X_test_proc = calcular_shap(modelo_base, X_train, X_test)
+    mapa["media_abs_shap"] = np.abs(shap_values).mean(axis=0)
 
-    feature_names = extrair_nomes_features(pipeline, features_num, features_cat)
+    por_grupo = (mapa.groupby("grupo")["media_abs_shap"].sum()
+                 .sort_values(ascending=False).reset_index())
+    por_grupo["participacao_pct"] = por_grupo["media_abs_shap"] / por_grupo["media_abs_shap"].sum() * 100
 
-    explainer, shap_values, X_test_proc, feature_names = \
-        calcular_shap(pipeline, X_test, feature_names)
+    permutacao, referencia = permutacao_por_grupo(modelo_final, X_test, y_test, metadata)
 
-    indices, importancia = plotar_importancia_global(
-        shap_values, X_test_proc, feature_names)
+    REPORTS_DIR.mkdir(exist_ok=True)
+    mapa.sort_values("media_abs_shap", ascending=False).to_csv(
+        REPORTS_DIR / f"shap_importancia{sufixo}.csv", index=False)
+    por_grupo.merge(permutacao, on="grupo").to_csv(
+        REPORTS_DIR / f"importancia_grupos{sufixo}.csv", index=False)
 
-    interpretar_resultados(feature_names, indices, importancia)
+    print("\nTop 15 features (media |SHAP|):")
+    print(mapa.sort_values("media_abs_shap", ascending=False).head(15)
+          [["feature", "grupo", "media_abs_shap"]].to_string(index=False))
+    print("\nParticipacao por grupo no SHAP total:")
+    print(por_grupo[["grupo", "participacao_pct"]].round(1).to_string(index=False))
+    print(f"\nPermutacao por grupo (PR-AUC de referencia no teste: {referencia:.4f}):")
+    print(permutacao.round(4).to_string(index=False))
 
-    print("\n" + "=" * 60)
-    print("✓ SHAP Analysis v2 concluída com nomes reais!")
-    print("=" * 60)
+    graficos(shap_values, X_test_proc, mapa, por_grupo, permutacao, sufixo, titulo)
+
 
 if __name__ == "__main__":
     main()
