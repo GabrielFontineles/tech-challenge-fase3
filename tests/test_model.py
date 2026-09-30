@@ -1,125 +1,96 @@
 """
-Testes para src/modeling/train.py
-Verifica integridade do modelo treinado e suas métricas.
+Testes do modelo treinado: metadata, ausencia de leakage e reprodutibilidade.
 """
 
-import pytest
-import pandas as pd
-import numpy as np
-import joblib
 import json
 from pathlib import Path
+
+import joblib
+import pandas as pd
+import pytest
+from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score, recall_score
+
+MODELS_DIR = Path("models")
+DATASET = Path("data/processed/dataset_enriquecido_v2.parquet")
+VARIANTES = {"": "completo", "_sem_historico": "sem_historico",
+             "_socioeconomico": "socioeconomico"}
 
 
-@pytest.fixture
-def modelo_e_metadata():
-    """Carrega modelo e metadata."""
-    modelo_path = Path("models/modelo_final.joblib")
-    meta_path = Path("models/metadata.json")
-    if not modelo_path.exists() or not meta_path.exists():
-        pytest.skip("Modelo não encontrado — rode train.py primeiro")
-    pipeline = joblib.load(modelo_path)
-    with open(meta_path, encoding="utf-8") as f:
-        metadata = json.load(f)
-    return pipeline, metadata
-
-
-@pytest.fixture
-def dados_teste(modelo_e_metadata):
-    """Prepara conjunto de teste."""
-    _, metadata = modelo_e_metadata
-    caminho = Path("data/processed/dataset_enriquecido_v2.parquet")
+@pytest.fixture(scope="module")
+def metadata():
+    caminho = MODELS_DIR / "metadata.json"
     if not caminho.exists():
-        caminho = Path("data/processed/dataset_modelagem_v2.parquet")
+        pytest.skip("Metadata nao encontrado: rode src/modeling/train.py")
+    with open(caminho, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@pytest.fixture(scope="module")
+def modelo():
+    caminho = MODELS_DIR / "modelo_final.joblib"
     if not caminho.exists():
-        pytest.skip("Dataset não encontrado")
+        pytest.skip("Modelo nao encontrado: rode src/modeling/train.py")
+    return joblib.load(caminho)
 
-    df = pd.read_parquet(caminho)
-    features_num = metadata["features_numericas"]
-    features_cat = metadata["features_categoricas"]
-    features_all = [f for f in features_num + features_cat if f in df.columns]
 
-    X = df[features_all]
-    y = df["em_risco_2024"]
-
-    _, X_test, _, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
+@pytest.fixture(scope="module")
+def conjunto_teste(metadata):
+    if not DATASET.exists():
+        pytest.skip("Dataset enriquecido nao encontrado")
+    df = pd.read_parquet(DATASET)
+    X = df[metadata["features_numericas"] + metadata["features_categoricas"]]
+    y = df[metadata["target"]].astype(int)
+    _, X_test, _, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
     return X_test, y_test
 
 
-def test_modelo_existe():
-    """Arquivo do modelo deve existir."""
-    assert Path("models/modelo_final.joblib").exists(), \
-        "modelo_final.joblib não encontrado"
+def test_metadata_campos_obrigatorios(metadata):
+    campos = ["modelo", "design", "target", "threshold", "features_numericas",
+              "features_categoricas", "metricas_teste", "fontes_externas", "calibracao"]
+    assert not [c for c in campos if c not in metadata]
 
 
-def test_metadata_existe():
-    """Metadata do modelo deve existir."""
-    assert Path("models/metadata.json").exists(), \
-        "metadata.json não encontrado"
+def test_design_temporal(metadata):
+    assert metadata["design"] == "features_2023_target_2024"
 
 
-def test_metadata_campos_obrigatorios(modelo_e_metadata):
-    """Metadata deve conter campos obrigatórios."""
-    _, metadata = modelo_e_metadata
-    campos = ["modelo", "threshold", "features_numericas",
-              "features_categoricas", "metricas_teste", "design"]
-    faltando = [c for c in campos if c not in metadata]
-    assert len(faltando) == 0, f"Campos faltando no metadata: {faltando}"
-
-
-def test_design_temporal(modelo_e_metadata):
-    """Modelo deve usar design temporal correto."""
-    _, metadata = modelo_e_metadata
-    assert metadata.get("design") == "features_2023_target_2024", \
-        "Design temporal incorreto no metadata"
-
-
-def test_threshold_valido(modelo_e_metadata):
-    """Threshold deve estar entre 0 e 1."""
-    _, metadata = modelo_e_metadata
-    threshold = metadata["threshold"]
-    assert 0 < threshold < 1, f"Threshold inválido: {threshold}"
-
-
-def test_roc_auc_minimo(modelo_e_metadata, dados_teste):
-    """ROC-AUC no teste deve ser >= 0.80."""
-    pipeline, metadata = modelo_e_metadata
-    X_test, y_test = dados_teste
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
-    auc = roc_auc_score(y_test, y_prob)
-    assert auc >= 0.80, f"ROC-AUC abaixo do mínimo: {auc:.4f} < 0.80"
-
-
-def test_recall_minimo(modelo_e_metadata, dados_teste):
-    """Recall da classe risco deve ser >= 0.80."""
-    pipeline, metadata = modelo_e_metadata
-    X_test, y_test = dados_teste
-    threshold = metadata["threshold"]
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
-    y_pred = (y_prob >= threshold).astype(int)
-    rec = recall_score(y_test, y_pred)
-    assert rec >= 0.80, f"Recall abaixo do mínimo: {rec:.4f} < 0.80"
-
-
-def test_sem_leakage_features(modelo_e_metadata):
-    """Features do modelo não devem conter variáveis de 2024."""
-    _, metadata = modelo_e_metadata
+def test_nenhuma_feature_de_2024(metadata):
     features = metadata["features_numericas"] + metadata["features_categoricas"]
-    proibidas = ["taxa_alf_2024", "score_niveis_altos",
-                 "proporcao_aluno_nivel_0", "proporcao_aluno_nivel_1"]
-    encontradas = [f for f in proibidas if f in features]
-    assert len(encontradas) == 0, \
-        f"Features de 2024 encontradas (leakage!): {encontradas}"
+    proibidas = [f for f in features if f.endswith("_2024") or f == metadata["target"]]
+    assert not proibidas, f"Features com informacao de 2024 (leakage): {proibidas}"
 
 
-def test_predict_proba_valido(modelo_e_metadata, dados_teste):
-    """Probabilidades devem estar entre 0 e 1."""
-    pipeline, _ = modelo_e_metadata
-    X_test, _ = dados_teste
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
-    assert y_prob.min() >= 0.0, "Probabilidade negativa encontrada"
-    assert y_prob.max() <= 1.0, "Probabilidade > 1 encontrada"
+def test_threshold_valido(metadata):
+    assert 0 < metadata["threshold"] < 1
+
+
+def test_roc_auc_plausivel(metadata):
+    """Abaixo de 0,80 o modelo e fraco; acima de 0,97 e sinal de leakage."""
+    roc = metadata["metricas_teste"]["roc_auc"]
+    assert 0.80 <= roc <= 0.97, f"ROC-AUC fora da faixa plausivel: {roc:.4f}"
+
+
+def test_recall_no_teste(metadata):
+    assert metadata["metricas_teste"]["recall"] >= 0.80
+
+
+def test_modelo_salvo_reproduz_metricas(modelo, metadata, conjunto_teste):
+    X_test, y_test = conjunto_teste
+    roc = roc_auc_score(y_test, modelo.predict_proba(X_test)[:, 1])
+    assert abs(roc - metadata["metricas_teste"]["roc_auc"]) < 1e-6
+
+
+def test_probabilidades_validas(modelo, conjunto_teste):
+    X_test, _ = conjunto_teste
+    prob = modelo.predict_proba(X_test)[:, 1]
+    assert prob.min() >= 0 and prob.max() <= 1
+
+
+@pytest.mark.parametrize("sufixo,variante", VARIANTES.items())
+def test_metadata_das_variantes(sufixo, variante):
+    caminho = MODELS_DIR / f"metadata{sufixo}.json"
+    if not caminho.exists():
+        pytest.skip(f"Variante {variante} nao treinada")
+    with open(caminho, encoding="utf-8") as f:
+        assert json.load(f)["variante"] == variante

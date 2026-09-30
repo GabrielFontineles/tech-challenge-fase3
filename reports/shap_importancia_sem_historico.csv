@@ -1,0 +1,63 @@
+feature,feature_original,grupo,media_abs_shap
+sigla_uf_BA,sigla_uf,Estado e regiao,0.4349566138500845
+sigla_uf_MG,sigla_uf,Estado e regiao,0.3440420259220866
+sigla_uf_RS,sigla_uf,Estado e regiao,0.24169677520372082
+sigla_uf_CE,sigla_uf,Estado e regiao,0.22657386173169983
+sigla_uf_GO,sigla_uf,Estado e regiao,0.19285343607848818
+log_populacao_2022,log_populacao_2022,Porte e densidade,0.16627195287311064
+idhm_educacao,idhm_educacao,Socioeconomico,0.15713591296029622
+sigla_uf_PR,sigla_uf,Estado e regiao,0.14573844577606127
+pct_rural,pct_rural,Socioeconomico,0.14322548882576877
+regiao_Norte,regiao,Estado e regiao,0.1352955343796021
+regiao_Sudeste,regiao,Estado e regiao,0.12632696163882953
+sigla_uf_RN,sigla_uf,Estado e regiao,0.10274319707704727
+densidade_2022,densidade_2022,Porte e densidade,0.08963179117992597
+expectativa_anos_estudo,expectativa_anos_estudo,Socioeconomico,0.0817755735215473
+sigla_uf_ES,sigla_uf,Estado e regiao,0.07364092655396363
+pct_pobres,pct_pobres,Socioeconomico,0.05934227532700339
+log_pib_per_capita,log_pib_per_capita,Socioeconomico,0.052778784715437496
+idhm_longevidade,idhm_longevidade,Socioeconomico,0.051786656184954906
+sigla_uf_SE,sigla_uf,Estado e regiao,0.04647857650636087
+pct_extremamente_pobres,pct_extremamente_pobres,Socioeconomico,0.04131340869668272
+sigla_uf_RO,sigla_uf,Estado e regiao,0.029991277568332326
+idhm,idhm,Socioeconomico,0.028405758183868375
+sigla_uf_PE,sigla_uf,Estado e regiao,0.02776057267982693
+idhm_renda,idhm_renda,Socioeconomico,0.02666381533576548
+freq_escolar_4a5,freq_escolar_4a5,Socioeconomico,0.02434759401456824
+sigla_uf_TO,sigla_uf,Estado e regiao,0.021306642342928013
+sigla_uf_AL,sigla_uf,Estado e regiao,0.016860151596958917
+analfabetismo_15mais,analfabetismo_15mais,Socioeconomico,0.01476541706209703
+porte_5_20mil,porte,Porte e densidade,0.014609151648925569
+sigla_uf_PI,sigla_uf,Estado e regiao,0.0116026052383918
+regiao_Nordeste,regiao,Estado e regiao,0.010147330525764471
+regiao_Sul,regiao,Estado e regiao,0.007266069633185066
+sigla_uf_RJ,sigla_uf,Estado e regiao,0.004206835987878904
+gini,gini,Socioeconomico,0.0037399349175860582
+sigla_uf_MS,sigla_uf,Estado e regiao,0.0018924129041120116
+porte_20_50mil,porte,Porte e densidade,0.0017926942306442353
+missingindicator_pct_extremamente_pobres,pct_extremamente_pobres,Socioeconomico,0.0
+missingindicator_expectativa_anos_estudo,expectativa_anos_estudo,Socioeconomico,0.0
+missingindicator_idhm_renda,idhm_renda,Socioeconomico,0.0
+missingindicator_gini,gini,Socioeconomico,0.0
+missingindicator_renda_per_capita_2010,renda_per_capita_2010,Socioeconomico,0.0
+missingindicator_idhm_longevidade,idhm_longevidade,Socioeconomico,0.0
+missingindicator_idhm,idhm,Socioeconomico,0.0
+missingindicator_idhm_educacao,idhm_educacao,Socioeconomico,0.0
+renda_per_capita_2010,renda_per_capita_2010,Socioeconomico,0.0
+missingindicator_pct_pobres,pct_pobres,Socioeconomico,0.0
+sigla_uf_AP,sigla_uf,Estado e regiao,0.0
+sigla_uf_AM,sigla_uf,Estado e regiao,0.0
+missingindicator_pct_rural,pct_rural,Socioeconomico,0.0
+missingindicator_freq_escolar_4a5,freq_escolar_4a5,Socioeconomico,0.0
+missingindicator_analfabetismo_15mais,analfabetismo_15mais,Socioeconomico,0.0
+sigla_uf_PA,sigla_uf,Estado e regiao,0.0
+sigla_uf_MA,sigla_uf,Estado e regiao,0.0
+sigla_uf_MT,sigla_uf,Estado e regiao,0.0
+sigla_uf_PB,sigla_uf,Estado e regiao,0.0
+regiao_Centro-Oeste,regiao,Estado e regiao,0.0
+sigla_uf_SC,sigla_uf,Estado e regiao,0.0
+sigla_uf_SP,sigla_uf,Estado e regiao,0.0
+porte_100_500mil,porte,Porte e densidade,0.0
+porte_50_100mil,porte,Porte e densidade,0.0
+porte_acima_500mil,porte,Porte e densidade,0.0
+porte_ate_5mil,porte,Porte e densidade,0.0

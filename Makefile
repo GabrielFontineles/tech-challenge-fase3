@@ -1,54 +1,41 @@
 # Makefile — Tech Challenge Fase 3
-# Pipeline completa de ML para predição de alfabetização
 
-.PHONY: all install dataset external train explain strategy test clean
+.PHONY: install dataset external train explain strategy test all help
 
-## Instala dependências
+## Instala as dependencias
 install:
 	pip install -r requirements.txt
 
-## Constrói dataset temporal (features 2023 → target 2024)
+## Constroi o dataset temporal (features 2023 -> target 2024)
 dataset:
 	python src/data/build_dataset.py
 
-## Baixa dados externos (requer GCP_BILLING_PROJECT_ID configurado)
+## Baixa IBGE via API e le o Atlas (xlsx em data/external/raw)
 external:
 	python src/data/download_external.py
 
-## Treina o modelo com RandomizedSearchCV
+## Treina as tres variantes do modelo
 train:
 	python src/modeling/train.py
+	python src/modeling/train.py --sem-historico
+	python src/modeling/train.py --so-socioeconomico
 
-## Gera análise SHAP de interpretabilidade
+## SHAP e importancia por grupo das tres variantes
 explain:
 	python src/evaluation/shap_analysis_v2.py
+	python src/evaluation/shap_analysis_v2.py --sem-historico
+	python src/evaluation/shap_analysis_v2.py --so-socioeconomico
 
-## Gera análise estratégica e lista de priorização
+## Ranking de risco, clusters, projecao 2030 e priorizacao
 strategy:
 	python src/evaluation/strategic_v2.py
 
-## Roda todos os testes
+## Roda os testes
 test:
 	python -m pytest tests/ -v
 
-## Pipeline completa (sem dados externos)
-all: dataset train explain strategy test
+## Pipeline completa
+all: dataset external train explain strategy test
 
-## Remove arquivos gerados
-clean:
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -delete
-	find . -type d -name ".pytest_cache" -delete
-
-## Ajuda
 help:
-	@echo "Comandos disponíveis:"
-	@echo "  make install    - Instala dependências"
-	@echo "  make dataset    - Constrói dataset temporal"
-	@echo "  make external   - Baixa dados externos (requer GCP)"
-	@echo "  make train      - Treina o modelo"
-	@echo "  make explain    - Gera análise SHAP"
-	@echo "  make strategy   - Gera análise estratégica"
-	@echo "  make test       - Roda testes pytest"
-	@echo "  make all        - Pipeline completa"
-	@echo "  make clean      - Remove arquivos temporários"
+	@echo "Uso: make [install|dataset|external|train|explain|strategy|test|all]"
