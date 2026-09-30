@@ -20,6 +20,7 @@ Etapas:
 Uso:
     python src/modeling/train.py                  # modelo completo
     python src/modeling/train.py --sem-historico  # sem o Bloco A (analise estrutural)
+    python src/modeling/train.py --so-socioeconomico  # apenas Bloco C (teste da H3)
 """
 
 import argparse
@@ -93,8 +94,11 @@ FONTES_EXTERNAS = {
 }
 
 
-def definir_features(sem_historico):
-    numericas = ([] if sem_historico else BLOCO_A) + BLOCO_B_NUM + BLOCO_C
+def definir_features(variante):
+    """Features de cada variante do modelo."""
+    if variante == "socioeconomico":
+        return list(BLOCO_C), []
+    numericas = ([] if variante == "sem_historico" else BLOCO_A) + BLOCO_B_NUM + BLOCO_C
     return numericas, list(BLOCO_B_CAT)
 
 
@@ -309,17 +313,26 @@ def salvar(calibrado, modelo_base, metadata, sufixo):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sem-historico", action="store_true",
+    opcoes = parser.add_mutually_exclusive_group()
+    opcoes.add_argument("--sem-historico", action="store_true",
                         help="treina sem o Bloco A (apenas territorio e socioeconomia)")
+    opcoes.add_argument("--so-socioeconomico", action="store_true",
+                        help="treina apenas com o Bloco C (sem historico, UF, regiao e porte)")
     args = parser.parse_args()
-    sufixo = "_sem_historico" if args.sem_historico else ""
+    if args.so_socioeconomico:
+        variante = "socioeconomico"
+    elif args.sem_historico:
+        variante = "sem_historico"
+    else:
+        variante = "completo"
+    sufixo = "" if variante == "completo" else f"_{variante}"
 
     print("=" * 60)
-    print(f"TREINAMENTO v2.1 {'— SEM HISTORICO' if args.sem_historico else ''}")
+    print(f"TREINAMENTO v2.1 — variante: {variante}")
     print(f"Inicio: {datetime.now():%Y-%m-%d %H:%M:%S}")
     print("=" * 60)
 
-    numericas, categoricas = definir_features(args.sem_historico)
+    numericas, categoricas = definir_features(variante)
     X, y = carregar_dados(numericas, categoricas)
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -341,7 +354,7 @@ def main():
     metadata = {
         "timestamp": datetime.now().isoformat(),
         "versao": "2.1",
-        "variante": "sem_historico" if args.sem_historico else "completo",
+        "variante": variante,
         "modelo": vencedor,
         "design": "features_2023_target_2024",
         "target": TARGET,
