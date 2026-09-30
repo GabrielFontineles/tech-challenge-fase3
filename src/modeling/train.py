@@ -1,391 +1,370 @@
 """
-Pipeline ML v2 — Design Temporal Correto
+Treinamento do modelo — v2.1
 Fase 3 — Tech Challenge FIAP
 
-Treina modelos para prever em_risco_2024 usando features de 2023.
-Inclui: DummyClassifier baseline, RandomizedSearchCV, threshold
-ajustado, calibração e persistência do modelo com joblib.
+Previsao de risco de alfabetizacao por municipio.
+Desenho temporal: features observadas em 2023 (e fontes estruturais
+anteriores), target em_risco_2024 = taxa de alfabetizacao 2024 < 60%.
+
+Etapas:
+1. Validacao das colunas e assercao anti-leakage (nenhuma feature de 2024)
+2. Split estratificado treino/teste (teste usado uma unica vez, no final)
+3. Comparacao de modelos de referencia em CV 5-fold (inclui Dummy)
+4. RandomizedSearchCV em HistGradientBoosting e Regressao Logistica
+   (scoring = PR-AUC); vence o maior PR-AUC medio em CV
+5. Calibracao isotonica (CalibratedClassifierCV) do modelo vencedor
+6. Threshold escolhido sobre predicoes out-of-fold calibradas,
+   garantindo recall >= 0.85 com a maior precisao possivel
+7. Avaliacao unica no teste, graficos e persistencia (joblib + metadata)
+
+Uso:
+    python src/modeling/train.py                  # modelo completo
+    python src/modeling/train.py --sem-historico  # sem o Bloco A (analise estrutural)
 """
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import joblib
+import argparse
 import json
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
-from sklearn.dummy import DummyClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
-from sklearn.model_selection import (
-    train_test_split, StratifiedKFold,
-    RandomizedSearchCV, cross_val_score
-)
-from sklearn.pipeline import Pipeline
+import joblib
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from scipy.stats import loguniform
+from sklearn.base import clone
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import (
-    classification_report, confusion_matrix,
-    roc_auc_score, average_precision_score,
-    roc_curve, precision_recall_curve,
-    f1_score, recall_score, precision_score,
-    brier_score_loss
-)
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (average_precision_score, brier_score_loss,
+                             classification_report, confusion_matrix, f1_score,
+                             precision_recall_curve, precision_score,
+                             recall_score, roc_auc_score, roc_curve)
+from sklearn.model_selection import (RandomizedSearchCV, StratifiedKFold,
+                                     cross_val_predict, cross_validate,
+                                     train_test_split)
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-plt.style.use('seaborn-v0_8')
-IMAGES_DIR = Path("images")
+RANDOM_STATE = 42
+TARGET = "em_risco_2024"
+CORTE_RISCO = 60.0
+RECALL_MINIMO = 0.85
+DATASET = Path("data/processed/dataset_enriquecido_v2.parquet")
 MODELS_DIR = Path("models")
-MODELS_DIR.mkdir(exist_ok=True)
+IMAGES_DIR = Path("images")
+REPORTS_DIR = Path("reports")
 
-# Features por bloco
-FEATURES_BLOCO_A = [
-    'taxa_alf_2023', 'media_pt_2023', 'particip_2023',
-    'nivel_alf_2023', 'meta_2030', 'gap_meta_2030_2023',
-    'dist_meta_2030_2023', 'taxa_vs_uf_2023',
-    'prop_nivel_0_2023', 'prop_nivel_1_2023', 'prop_nivel_2_2023',
-    'prop_nivel_3_2023', 'prop_nivel_4_2023', 'prop_nivel_5_2023',
-    'prop_nivel_6_2023', 'prop_nivel_7_2023', 'prop_nivel_8_2023',
+# Bloco A — historico educacional 2023
+BLOCO_A = [
+    "taxa_alf_2023", "media_pt_2023", "particip_2023", "nivel_alf_2023",
+    "meta_2030", "gap_meta_2030_2023", "taxa_vs_uf_2023",
+    "prop_nivel_0_2023", "prop_nivel_1_2023", "prop_nivel_2_2023",
+    "prop_nivel_3_2023", "prop_nivel_4_2023", "prop_nivel_5_2023",
+    "prop_nivel_6_2023", "prop_nivel_7_2023", "prop_nivel_8_2023",
 ]
 
-FEATURES_BLOCO_B_NUM = ['populacao_2023', 'log_populacao']
-FEATURES_BLOCO_B_CAT = ['sigla_uf', 'regiao', 'porte']
+# Bloco B — territorio (IBGE Censo 2022)
+BLOCO_B_NUM = ["log_populacao_2022", "densidade_2022"]
+BLOCO_B_CAT = ["sigla_uf", "regiao", "porte"]
 
-FEATURES_BLOCO_C = [
-    'idhm', 'idhm_educacao', 'idhm_renda',
-    'renda_per_capita', 'gini', 'pct_pobres',
-    'pib_per_capita', 'log_pib_per_capita'
+# Bloco C — socioeconomico (IBGE PIB 2021 e Atlas 2010)
+BLOCO_C = [
+    "log_pib_per_capita", "idhm", "idhm_educacao", "idhm_renda",
+    "idhm_longevidade", "renda_per_capita_2010", "gini", "pct_pobres",
+    "pct_extremamente_pobres", "analfabetismo_15mais",
+    "expectativa_anos_estudo", "freq_escolar_4a5", "pct_rural",
 ]
 
-TARGET = 'em_risco_2024'
+FONTES_EXTERNAS = {
+    "IBGE Censo 2022 (SIDRA tabela 4714)": ["log_populacao_2022", "densidade_2022", "porte"],
+    "IBGE PIB dos Municipios 2021 (SIDRA tabela 5938)": ["log_pib_per_capita"],
+    "Atlas do Desenvolvimento Humano 2010": [c for c in BLOCO_C if c != "log_pib_per_capita"],
+}
 
-def carregar_dados():
-    """Carrega dataset enriquecido."""
-    print("Carregando dataset...")
-    caminho = Path("data/processed/dataset_enriquecido_v2.parquet")
-    if not caminho.exists():
-        print("  Dataset enriquecido não encontrado, usando base...")
-        caminho = Path("data/processed/dataset_modelagem_v2.parquet")
-    df = pd.read_parquet(caminho)
-    print(f"  Shape: {df.shape}")
-    return df
 
-def preparar_features(df):
-    """Separa X e y, identifica colunas por tipo."""
-    # Features disponíveis
-    features_num = [f for f in FEATURES_BLOCO_A + FEATURES_BLOCO_B_NUM + FEATURES_BLOCO_C
-                    if f in df.columns]
-    features_cat = [f for f in FEATURES_BLOCO_B_CAT if f in df.columns]
+def definir_features(sem_historico):
+    numericas = ([] if sem_historico else BLOCO_A) + BLOCO_B_NUM + BLOCO_C
+    return numericas, list(BLOCO_B_CAT)
 
-    X = df[features_num + features_cat].copy()
-    y = df[TARGET].copy()
 
-    print(f"\nFeatures numéricas: {len(features_num)}")
-    print(f"Features categóricas: {len(features_cat)}")
-    print(f"Total features: {len(features_num) + len(features_cat)}")
-    print(f"Target - Em risco (1): {y.sum()} ({y.mean()*100:.1f}%)")
+def carregar_dados(numericas, categoricas):
+    """Carrega o dataset e valida colunas e ausencia de leakage."""
+    if not DATASET.exists():
+        sys.exit(f"ERRO: {DATASET} nao encontrado. Rode build_dataset.py e download_external.py.")
+    df = pd.read_parquet(DATASET)
 
-    return X, y, features_num, features_cat
+    faltando = [c for c in numericas + categoricas + [TARGET] if c not in df.columns]
+    if faltando:
+        sys.exit(f"ERRO: colunas ausentes no dataset: {faltando}")
 
-def criar_preprocessador(features_num, features_cat):
-    """Pipeline de pré-processamento."""
-    num_pipe = Pipeline([
-        ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
-        ('scaler', StandardScaler())
+    proibidas = [c for c in numericas + categoricas if c.endswith("_2024") or c == TARGET]
+    if proibidas:
+        sys.exit(f"ERRO: features com informacao de 2024 (leakage): {proibidas}")
+
+    X = df[numericas + categoricas]
+    y = df[TARGET].astype(int)
+    print(f"Dataset: {len(df)} municipios | {len(numericas)} numericas + {len(categoricas)} categoricas")
+    print(f"Em risco: {y.sum()} ({y.mean() * 100:.1f}%)")
+    return X, y
+
+
+def criar_preprocessador(numericas, categoricas):
+    num = Pipeline([
+        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
+        ("scaler", StandardScaler()),
     ])
+    cat = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+    ])
+    return ColumnTransformer([("num", num, numericas), ("cat", cat, categoricas)])
 
-    transformers = [('num', num_pipe, features_num)]
 
-    if features_cat:
-        cat_pipe = Pipeline([
-            ('imputer', SimpleImputer(strategy='most_frequent')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
-        ])
-        transformers.append(('cat', cat_pipe, features_cat))
+def montar(clf, numericas, categoricas):
+    return Pipeline([("pre", criar_preprocessador(numericas, categoricas)), ("clf", clf)])
 
-    return ColumnTransformer(transformers)
 
-def avaliar_baseline(X_train, y_train, X_test, y_test, preprocessador):
-    """DummyClassifier como baseline obrigatório."""
+def comparar_modelos_referencia(X_train, y_train, numericas, categoricas, cv):
+    """Modelos com hiperparametros padrao, avaliados apenas em CV."""
     print("\n" + "=" * 60)
-    print("BASELINE — DummyClassifier")
+    print("MODELOS DE REFERENCIA (CV 5-fold no treino)")
     print("=" * 60)
-
-    dummy = Pipeline([
-        ('pre', preprocessador),
-        ('clf', DummyClassifier(strategy='prior', random_state=42))
-    ])
-    dummy.fit(X_train, y_train)
-    y_pred = dummy.predict(X_test)
-    y_prob = dummy.predict_proba(X_test)[:, 1]
-
-    print(f"  ROC-AUC:  {roc_auc_score(y_test, y_prob):.4f}")
-    print(f"  PR-AUC:   {average_precision_score(y_test, y_prob):.4f}")
-    print(f"  Recall:   {recall_score(y_test, y_pred):.4f}")
-    return dummy
-
-def treinar_com_cv(nome, estimador, X_train, y_train, preprocessador, cv):
-    """Treina modelo com cross-validation."""
-    pipeline = Pipeline([
-        ('pre', preprocessador),
-        ('clf', estimador)
-    ])
-
-    scores_roc = cross_val_score(pipeline, X_train, y_train,
-                                  cv=cv, scoring='roc_auc')
-    scores_pr = cross_val_score(pipeline, X_train, y_train,
-                                 cv=cv, scoring='average_precision')
-    scores_rec = cross_val_score(pipeline, X_train, y_train,
-                                  cv=cv, scoring='recall')
-
-    print(f"\n{nome}:")
-    print(f"  ROC-AUC: {scores_roc.mean():.4f} ± {scores_roc.std():.4f}")
-    print(f"  PR-AUC:  {scores_pr.mean():.4f} ± {scores_pr.std():.4f}")
-    print(f"  Recall:  {scores_rec.mean():.4f} ± {scores_rec.std():.4f}")
-
-    return {
-        'pipeline': pipeline,
-        'roc_mean': scores_roc.mean(),
-        'pr_mean': scores_pr.mean(),
-        'rec_mean': scores_rec.mean()
+    candidatos = {
+        "Dummy (prior)": DummyClassifier(strategy="prior"),
+        "Logistic Regression": LogisticRegression(max_iter=2000, class_weight="balanced",
+                                                  random_state=RANDOM_STATE),
+        "Random Forest": RandomForestClassifier(n_estimators=300, class_weight="balanced_subsample",
+                                                n_jobs=-1, random_state=RANDOM_STATE),
+        "HistGradientBoosting": HistGradientBoostingClassifier(random_state=RANDOM_STATE),
     }
+    linhas = []
+    for nome, clf in candidatos.items():
+        res = cross_validate(montar(clf, numericas, categoricas), X_train, y_train, cv=cv,
+                             scoring=["roc_auc", "average_precision", "recall"], n_jobs=-1)
+        linha = {
+            "modelo": nome,
+            "roc_auc": res["test_roc_auc"].mean(), "roc_auc_std": res["test_roc_auc"].std(),
+            "pr_auc": res["test_average_precision"].mean(),
+            "pr_auc_std": res["test_average_precision"].std(),
+            "recall": res["test_recall"].mean(),
+        }
+        linhas.append(linha)
+        print(f"{nome:<22} ROC-AUC {linha['roc_auc']:.4f} ± {linha['roc_auc_std']:.4f} | "
+              f"PR-AUC {linha['pr_auc']:.4f} ± {linha['pr_auc_std']:.4f} | recall {linha['recall']:.4f}")
+    return pd.DataFrame(linhas)
 
-def otimizar_modelo(X_train, y_train, preprocessador, cv):
-    """RandomizedSearchCV no HistGradientBoosting."""
+
+def otimizar(X_train, y_train, numericas, categoricas, cv):
+    """RandomizedSearchCV em HGB e LogReg; vence o maior PR-AUC medio em CV."""
     print("\n" + "=" * 60)
-    print("OTIMIZAÇÃO — RandomizedSearchCV (HistGradientBoosting)")
+    print("OTIMIZACAO (RandomizedSearchCV, scoring = PR-AUC)")
     print("=" * 60)
-
-    pipeline = Pipeline([
-        ('pre', preprocessador),
-        ('clf', HistGradientBoostingClassifier(random_state=42))
-    ])
-
-    param_dist = {
-        'clf__learning_rate': [0.01, 0.05, 0.1, 0.2],
-        'clf__max_iter': [100, 200, 300],
-        'clf__max_depth': [3, 5, 7, None],
-        'clf__min_samples_leaf': [10, 20, 30, 50],
-        'clf__l2_regularization': [0.0, 0.1, 1.0],
-        'clf__class_weight': ['balanced', None]
+    buscas = {
+        "HistGradientBoosting": (
+            HistGradientBoostingClassifier(random_state=RANDOM_STATE),
+            {
+                "clf__learning_rate": [0.02, 0.05, 0.1],
+                "clf__max_iter": [100, 200, 400],
+                "clf__max_depth": [3, 5, None],
+                "clf__min_samples_leaf": [20, 40, 80],
+                "clf__l2_regularization": [0.0, 0.1, 1.0],
+                "clf__class_weight": ["balanced", None],
+            },
+            30,
+        ),
+        "Logistic Regression": (
+            LogisticRegression(max_iter=2000, random_state=RANDOM_STATE),
+            {"clf__C": loguniform(1e-3, 1e2), "clf__class_weight": ["balanced", None]},
+            20,
+        ),
     }
+    resultados = {}
+    for nome, (clf, espaco, n_iter) in buscas.items():
+        busca = RandomizedSearchCV(montar(clf, numericas, categoricas), espaco, n_iter=n_iter,
+                                   scoring="average_precision", cv=cv, n_jobs=-1,
+                                   random_state=RANDOM_STATE, return_train_score=True)
+        busca.fit(X_train, y_train)
+        i = busca.best_index_
+        treino = busca.cv_results_["mean_train_score"][i]
+        validacao = busca.best_score_
+        resultados[nome] = {
+            "busca": busca,
+            "pr_auc_cv": float(validacao),
+            "pr_auc_treino": float(treino),
+            "gap_treino_cv": float(treino - validacao),
+            "melhores_parametros": {k: (float(v) if isinstance(v, (float, np.floating)) else v)
+                                    for k, v in busca.best_params_.items()},
+        }
+        print(f"\n{nome}")
+        print(f"  PR-AUC CV: {validacao:.4f} | treino: {treino:.4f} | gap: {treino - validacao:.4f}")
+        print(f"  Parametros: {busca.best_params_}")
 
-    search = RandomizedSearchCV(
-        pipeline, param_dist,
-        n_iter=30, cv=cv,
-        scoring='roc_auc',
-        random_state=42, n_jobs=-1,
-        refit=True, verbose=1
-    )
+    vencedor = max(resultados, key=lambda k: resultados[k]["pr_auc_cv"])
+    print(f"\nModelo selecionado (maior PR-AUC em CV): {vencedor}")
+    return vencedor, resultados
 
-    search.fit(X_train, y_train)
 
-    print(f"\n  Melhores parâmetros:")
-    for k, v in search.best_params_.items():
-        print(f"    {k}: {v}")
-    print(f"\n  Melhor ROC-AUC (CV): {search.best_score_:.4f}")
+def calibrar_e_escolher_threshold(modelo_base, X_train, y_train, cv):
+    """Calibracao isotonica e threshold por predicoes out-of-fold calibradas."""
+    print("\nCalibrando probabilidades e escolhendo threshold...")
+    calibrado = CalibratedClassifierCV(clone(modelo_base), method="isotonic", cv=cv)
+    prob_oof = cross_val_predict(calibrado, X_train, y_train, cv=cv,
+                                 method="predict_proba", n_jobs=-1)[:, 1]
 
-    return search.best_estimator_
-
-def ajustar_threshold(pipeline, X_train, y_train, cv):
-    """Ajusta threshold para maximizar recall >= 0.85."""
-    print("\nAjustando threshold...")
-
-    y_prob_cv = np.zeros(len(y_train))
-    for train_idx, val_idx in cv.split(X_train, y_train):
-        pipeline.fit(X_train.iloc[train_idx], y_train.iloc[train_idx])
-        y_prob_cv[val_idx] = pipeline.predict_proba(
-            X_train.iloc[val_idx])[:, 1]
-
-    # Retreina no conjunto completo
-    pipeline.fit(X_train, y_train)
-
-    precisoes, recalls, thresholds = precision_recall_curve(
-        y_train, y_prob_cv)
-
-    # Threshold com recall >= 0.85 e maior precisão
-    mask = recalls[:-1] >= 0.85
-    if mask.any():
-        melhor_idx = np.argmax(precisoes[:-1][mask])
-        threshold = thresholds[mask][melhor_idx]
+    precisoes, recalls, thresholds = precision_recall_curve(y_train, prob_oof)
+    atende = recalls[:-1] >= RECALL_MINIMO
+    if atende.any():
+        idx = int(np.argmax(np.where(atende, precisoes[:-1], -1)))
+        threshold = float(thresholds[idx])
     else:
         threshold = 0.5
+        print(f"  AVISO: nenhum threshold atinge recall {RECALL_MINIMO}; usando 0.5")
 
-    print(f"  Threshold ajustado: {threshold:.3f}")
-    return pipeline, threshold
+    calibrado.fit(X_train, y_train)
+    print(f"  Threshold (recall >= {RECALL_MINIMO} out-of-fold): {threshold:.3f}")
+    return calibrado, threshold
 
-def avaliar_modelo_final(pipeline, X_test, y_test, threshold, nome_modelo):
-    """Avalia modelo final no conjunto de teste."""
+
+def avaliar_teste(calibrado, modelo_base, X_test, y_test, threshold):
+    """Avaliacao unica no conjunto de teste."""
     print("\n" + "=" * 60)
-    print(f"AVALIAÇÃO FINAL — {nome_modelo}")
+    print("AVALIACAO FINAL NO TESTE (unica vez)")
     print("=" * 60)
+    prob = calibrado.predict_proba(X_test)[:, 1]
+    prob_sem_calibracao = modelo_base.predict_proba(X_test)[:, 1]
+    pred = (prob >= threshold).astype(int)
 
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
-    y_pred = (y_prob >= threshold).astype(int)
-
-    roc = roc_auc_score(y_test, y_prob)
-    pr = average_precision_score(y_test, y_prob)
-    rec = recall_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    brier = brier_score_loss(y_test, y_prob)
-
-    print(f"\nMétricas (threshold={threshold:.3f}):")
-    print(f"  ROC-AUC:   {roc:.4f}")
-    print(f"  PR-AUC:    {pr:.4f}")
-    print(f"  Recall:    {rec:.4f}  ← captura municípios em risco")
-    print(f"  Precision: {prec:.4f}")
-    print(f"  F1-Score:  {f1:.4f}")
-    print(f"  Brier:     {brier:.4f}")
-
-    print(f"\nClassification Report:")
-    print(classification_report(y_test, y_pred,
-                                target_names=['Nao em risco', 'Em risco']))
-
-    return {
-        'roc_auc': roc, 'pr_auc': pr,
-        'recall': rec, 'precision': prec,
-        'f1': f1, 'brier': brier,
-        'threshold': threshold
+    metricas = {
+        "roc_auc": float(roc_auc_score(y_test, prob)),
+        "pr_auc": float(average_precision_score(y_test, prob)),
+        "recall": float(recall_score(y_test, pred)),
+        "precision": float(precision_score(y_test, pred)),
+        "f1": float(f1_score(y_test, pred)),
+        "brier_calibrado": float(brier_score_loss(y_test, prob)),
+        "brier_sem_calibracao": float(brier_score_loss(y_test, prob_sem_calibracao)),
+        "threshold": threshold,
     }
+    for k, v in metricas.items():
+        print(f"  {k:<22} {v:.4f}")
+    print()
+    print(classification_report(y_test, pred, target_names=["Nao em risco", "Em risco"]))
+    return metricas, prob, pred
 
-def visualizar_resultados(pipeline, X_test, y_test, threshold, resultados_cv):
-    """Gera gráficos de resultados."""
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
-    y_pred = (y_prob >= threshold).astype(int)
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+def gerar_graficos(y_test, prob, pred, threshold, sufixo):
+    fig, axes = plt.subplots(2, 2, figsize=(14, 11))
 
-    # Curva ROC
-    fpr, tpr, _ = roc_curve(y_test, y_prob)
-    auc = roc_auc_score(y_test, y_prob)
-    axes[0].plot(fpr, tpr, color='steelblue', linewidth=2,
-                 label=f'ROC-AUC = {auc:.4f}')
-    axes[0].plot([0, 1], [0, 1], 'k--')
-    axes[0].set_xlabel('False Positive Rate')
-    axes[0].set_ylabel('True Positive Rate')
-    axes[0].set_title('Curva ROC')
-    axes[0].legend()
+    fpr, tpr, _ = roc_curve(y_test, prob)
+    axes[0, 0].plot(fpr, tpr, linewidth=2, label=f"ROC-AUC = {roc_auc_score(y_test, prob):.3f}")
+    axes[0, 0].plot([0, 1], [0, 1], "k--")
+    axes[0, 0].set(title="Curva ROC", xlabel="Taxa de falsos positivos",
+                   ylabel="Taxa de verdadeiros positivos")
+    axes[0, 0].legend()
 
-    # Curva Precision-Recall
-    prec_curve, rec_curve, thresh = precision_recall_curve(y_test, y_prob)
-    pr_auc = average_precision_score(y_test, y_prob)
-    axes[1].plot(rec_curve, prec_curve, color='orange', linewidth=2,
-                 label=f'PR-AUC = {pr_auc:.4f}')
-    axes[1].axvline(x=0.85, color='red', linestyle='--',
-                    label='Recall alvo (0.85)')
-    axes[1].set_xlabel('Recall')
-    axes[1].set_ylabel('Precision')
-    axes[1].set_title('Curva Precision-Recall')
-    axes[1].legend()
+    prec, rec, _ = precision_recall_curve(y_test, prob)
+    axes[0, 1].plot(rec, prec, linewidth=2, color="orange",
+                    label=f"PR-AUC = {average_precision_score(y_test, prob):.3f}")
+    axes[0, 1].axvline(RECALL_MINIMO, color="red", linestyle="--", label=f"Recall alvo ({RECALL_MINIMO})")
+    axes[0, 1].set(title="Curva Precision-Recall", xlabel="Recall", ylabel="Precision")
+    axes[0, 1].legend()
 
-    # Matriz de confusão
-    cm = confusion_matrix(y_test, y_pred)
-    import seaborn as sns
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[2],
-                xticklabels=['Nao risco', 'Em risco'],
-                yticklabels=['Nao risco', 'Em risco'])
-    axes[2].set_title(f'Matriz de Confusão\n(threshold={threshold:.3f})')
-    axes[2].set_ylabel('Real')
-    axes[2].set_xlabel('Previsto')
+    frac_pos, prob_media = calibration_curve(y_test, prob, n_bins=10)
+    axes[1, 0].plot(prob_media, frac_pos, "o-", label="Modelo calibrado")
+    axes[1, 0].plot([0, 1], [0, 1], "k--", label="Calibracao perfeita")
+    axes[1, 0].set(title="Curva de calibracao", xlabel="Probabilidade prevista",
+                   ylabel="Fracao observada em risco")
+    axes[1, 0].legend()
+
+    sns.heatmap(confusion_matrix(y_test, pred), annot=True, fmt="d", cmap="Blues", ax=axes[1, 1],
+                xticklabels=["Nao risco", "Em risco"], yticklabels=["Nao risco", "Em risco"])
+    axes[1, 1].set(title=f"Matriz de confusao (threshold = {threshold:.3f})",
+                   xlabel="Previsto", ylabel="Real")
 
     plt.tight_layout()
-    plt.savefig(IMAGES_DIR / '15_resultados_v2.png', dpi=150)
+    caminho = IMAGES_DIR / f"15_resultados_v21{sufixo}.png"
+    plt.savefig(caminho, dpi=150)
     plt.close()
-    print("\n✓ Gráfico salvo: images/15_resultados_v2.png")
+    print(f"Grafico salvo: {caminho}")
 
-def salvar_modelo(pipeline, metricas, threshold, features_num, features_cat):
-    """Salva modelo e metadata com joblib."""
-    caminho_modelo = MODELS_DIR / "modelo_final.joblib"
-    joblib.dump(pipeline, caminho_modelo)
-    print(f"\n✓ Modelo salvo em: {caminho_modelo}")
 
-    metadata = {
-        'timestamp': datetime.now().isoformat(),
-        'modelo': 'HistGradientBoostingClassifier',
-        'threshold': threshold,
-        'features_numericas': features_num,
-        'features_categoricas': features_cat,
-        'metricas_teste': metricas,
-        'target': TARGET,
-        'design': 'features_2023_target_2024',
-        'corte_risco': 60.0
-    }
+def salvar(calibrado, modelo_base, metadata, sufixo):
+    MODELS_DIR.mkdir(exist_ok=True)
+    joblib.dump(calibrado, MODELS_DIR / f"modelo_final{sufixo}.joblib")
+    joblib.dump(modelo_base, MODELS_DIR / f"modelo_base{sufixo}.joblib")
+    with open(MODELS_DIR / f"metadata{sufixo}.json", "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False, default=str)
+    print(f"Modelos e metadata salvos em {MODELS_DIR}/ (sufixo: '{sufixo or 'nenhum'}')")
 
-    caminho_meta = MODELS_DIR / "metadata.json"
-    with open(caminho_meta, 'w', encoding='utf-8') as f:
-        json.dump(metadata, f, indent=2, ensure_ascii=False)
-    print(f"✓ Metadata salvo em: {caminho_meta}")
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sem-historico", action="store_true",
+                        help="treina sem o Bloco A (apenas territorio e socioeconomia)")
+    args = parser.parse_args()
+    sufixo = "_sem_historico" if args.sem_historico else ""
+
     print("=" * 60)
-    print("PIPELINE ML v2 — DESIGN TEMPORAL CORRETO")
-    print(f"Início: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"TREINAMENTO v2.1 {'— SEM HISTORICO' if args.sem_historico else ''}")
+    print(f"Inicio: {datetime.now():%Y-%m-%d %H:%M:%S}")
     print("=" * 60)
 
-    df = carregar_dados()
-    X, y, features_num, features_cat = preparar_features(df)
+    numericas, categoricas = definir_features(args.sem_historico)
+    X, y = carregar_dados(numericas, categoricas)
 
-    # Split treino/teste — tocado UMA ÚNICA VEZ no final
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    print(f"\nSplit: treino={len(X_train)} | teste={len(X_test)}")
+        X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE)
+    print(f"Split: treino {len(X_train)} | teste {len(X_test)}")
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
 
-    preprocessador = criar_preprocessador(features_num, features_cat)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    referencia = comparar_modelos_referencia(X_train, y_train, numericas, categoricas, cv)
+    REPORTS_DIR.mkdir(exist_ok=True)
+    referencia.to_csv(REPORTS_DIR / f"comparacao_modelos{sufixo}.csv", index=False)
 
-    # Baseline
-    avaliar_baseline(X_train, y_train, X_test, y_test, preprocessador)
+    vencedor, resultados = otimizar(X_train, y_train, numericas, categoricas, cv)
+    modelo_base = resultados[vencedor]["busca"].best_estimator_
 
-    # Modelos baseline com CV
-    print("\n" + "=" * 60)
-    print("COMPARAÇÃO DE MODELOS BASELINE (Cross-Validation)")
-    print("=" * 60)
+    calibrado, threshold = calibrar_e_escolher_threshold(modelo_base, X_train, y_train, cv)
+    metricas, prob, pred = avaliar_teste(calibrado, modelo_base, X_test, y_test, threshold)
+    gerar_graficos(y_test, prob, pred, threshold, sufixo)
 
-    resultados_cv = {}
-    modelos = {
-        'Logistic Regression': LogisticRegression(
-            class_weight='balanced', max_iter=1000, random_state=42),
-        'Random Forest': RandomForestClassifier(
-            class_weight='balanced_subsample', random_state=42, n_jobs=-1),
-        'HistGradientBoosting': HistGradientBoostingClassifier(random_state=42)
+    metadata = {
+        "timestamp": datetime.now().isoformat(),
+        "versao": "2.1",
+        "variante": "sem_historico" if args.sem_historico else "completo",
+        "modelo": vencedor,
+        "design": "features_2023_target_2024",
+        "target": TARGET,
+        "corte_risco": CORTE_RISCO,
+        "threshold": threshold,
+        "recall_minimo": RECALL_MINIMO,
+        "criterio_selecao": "maior PR-AUC medio em CV 5-fold estratificado",
+        "calibracao": "CalibratedClassifierCV, metodo isotonic, cv 5-fold",
+        "features_numericas": numericas,
+        "features_categoricas": categoricas,
+        "fontes_externas": FONTES_EXTERNAS,
+        "busca_hiperparametros": {k: {kk: vv for kk, vv in v.items() if kk != "busca"}
+                                  for k, v in resultados.items()},
+        "metricas_teste": metricas,
     }
+    salvar(calibrado, modelo_base, metadata, sufixo)
 
-    for nome, estimador in modelos.items():
-        resultados_cv[nome] = treinar_com_cv(
-            nome, estimador, X_train, y_train, preprocessador, cv)
-
-    # Otimização do melhor modelo
-    melhor_pipeline = otimizar_modelo(X_train, y_train, preprocessador, cv)
-
-    # Ajuste de threshold
-    melhor_pipeline, threshold = ajustar_threshold(
-        melhor_pipeline, X_train, y_train, cv)
-
-    # Avaliação final no teste
-    metricas = avaliar_modelo_final(
-        melhor_pipeline, X_test, y_test, threshold,
-        'HistGradientBoosting Otimizado')
-
-    # Visualizações
-    visualizar_resultados(
-        melhor_pipeline, X_test, y_test, threshold, resultados_cv)
-
-    # Salva modelo
-    salvar_modelo(melhor_pipeline, metricas, threshold,
-                  features_num, features_cat)
-
-    print(f"\n{'=' * 60}")
-    print("✓ Pipeline ML v2 concluída!")
-    print(f"  ROC-AUC: {metricas['roc_auc']:.4f}")
-    print(f"  Recall (em risco): {metricas['recall']:.4f}")
-    print(f"Fim: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("\n" + "=" * 60)
+    print(f"Concluido: {vencedor} | ROC-AUC {metricas['roc_auc']:.4f} | "
+          f"PR-AUC {metricas['pr_auc']:.4f} | recall {metricas['recall']:.4f}")
+    print(f"Fim: {datetime.now():%Y-%m-%d %H:%M:%S}")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()
