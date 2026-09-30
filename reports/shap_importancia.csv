@@ -1,0 +1,83 @@
+feature,feature_original,grupo,media_abs_shap
+media_pt_2023,media_pt_2023,Historico educacional 2023,1.1224724526866263
+sigla_uf_RS,sigla_uf,Estado e regiao,0.3307333689543271
+taxa_alf_2023,taxa_alf_2023,Historico educacional 2023,0.2646623457259413
+sigla_uf_BA,sigla_uf,Estado e regiao,0.19878501709626523
+particip_2023,particip_2023,Historico educacional 2023,0.19327728860444096
+regiao_Sudeste,regiao,Estado e regiao,0.18598802787964697
+sigla_uf_MG,sigla_uf,Estado e regiao,0.16355563348086805
+log_populacao_2022,log_populacao_2022,Porte e densidade,0.12884859656565228
+taxa_vs_uf_2023,taxa_vs_uf_2023,Historico educacional 2023,0.12804625344210618
+sigla_uf_GO,sigla_uf,Estado e regiao,0.1089287757953796
+idhm_educacao,idhm_educacao,Socioeconomico,0.07723241210219661
+densidade_2022,densidade_2022,Porte e densidade,0.055988224695132614
+pct_rural,pct_rural,Socioeconomico,0.04153695750277342
+idhm,idhm,Socioeconomico,0.04132266246705426
+regiao_Centro-Oeste,regiao,Estado e regiao,0.03490476357994622
+idhm_longevidade,idhm_longevidade,Socioeconomico,0.029889845968364977
+nivel_alf_2023,nivel_alf_2023,Historico educacional 2023,0.0276527733987592
+log_pib_per_capita,log_pib_per_capita,Socioeconomico,0.026004991701612624
+expectativa_anos_estudo,expectativa_anos_estudo,Socioeconomico,0.024897606674195757
+regiao_Nordeste,regiao,Estado e regiao,0.024731743550781223
+pct_extremamente_pobres,pct_extremamente_pobres,Socioeconomico,0.021483639674610856
+analfabetismo_15mais,analfabetismo_15mais,Socioeconomico,0.020019456421728116
+idhm_renda,idhm_renda,Socioeconomico,0.019851134668131456
+pct_pobres,pct_pobres,Socioeconomico,0.01814654359400097
+gap_meta_2030_2023,gap_meta_2030_2023,Historico educacional 2023,0.017805381229510232
+sigla_uf_PR,sigla_uf,Estado e regiao,0.016250291271620785
+renda_per_capita_2010,renda_per_capita_2010,Socioeconomico,0.012193307292452443
+sigla_uf_PB,sigla_uf,Estado e regiao,0.011681824428019393
+freq_escolar_4a5,freq_escolar_4a5,Socioeconomico,0.008524706648749901
+missingindicator_particip_2023,particip_2023,Historico educacional 2023,0.008037777874648223
+sigla_uf_CE,sigla_uf,Estado e regiao,0.0058025649625753125
+sigla_uf_TO,sigla_uf,Estado e regiao,0.004966417213101099
+porte_5_20mil,porte,Porte e densidade,0.0044999959467751025
+gini,gini,Socioeconomico,0.0021929539350065783
+porte_ate_5mil,porte,Porte e densidade,0.0004740975691878116
+regiao_Sul,regiao,Estado e regiao,0.00043736557768554805
+prop_nivel_7_2023,prop_nivel_7_2023,Historico educacional 2023,0.0
+prop_nivel_8_2023,prop_nivel_8_2023,Historico educacional 2023,0.0
+prop_nivel_4_2023,prop_nivel_4_2023,Historico educacional 2023,0.0
+prop_nivel_3_2023,prop_nivel_3_2023,Historico educacional 2023,0.0
+prop_nivel_1_2023,prop_nivel_1_2023,Historico educacional 2023,0.0
+prop_nivel_2_2023,prop_nivel_2_2023,Historico educacional 2023,0.0
+prop_nivel_0_2023,prop_nivel_0_2023,Historico educacional 2023,0.0
+meta_2030,meta_2030,Historico educacional 2023,0.0
+prop_nivel_5_2023,prop_nivel_5_2023,Historico educacional 2023,0.0
+prop_nivel_6_2023,prop_nivel_6_2023,Historico educacional 2023,0.0
+missingindicator_gap_meta_2030_2023,gap_meta_2030_2023,Historico educacional 2023,0.0
+missingindicator_idhm,idhm,Socioeconomico,0.0
+missingindicator_nivel_alf_2023,nivel_alf_2023,Historico educacional 2023,0.0
+missingindicator_meta_2030,meta_2030,Historico educacional 2023,0.0
+sigla_uf_AP,sigla_uf,Estado e regiao,0.0
+sigla_uf_AM,sigla_uf,Estado e regiao,0.0
+sigla_uf_AL,sigla_uf,Estado e regiao,0.0
+missingindicator_pct_rural,pct_rural,Socioeconomico,0.0
+missingindicator_freq_escolar_4a5,freq_escolar_4a5,Socioeconomico,0.0
+missingindicator_expectativa_anos_estudo,expectativa_anos_estudo,Socioeconomico,0.0
+missingindicator_analfabetismo_15mais,analfabetismo_15mais,Socioeconomico,0.0
+missingindicator_pct_extremamente_pobres,pct_extremamente_pobres,Socioeconomico,0.0
+missingindicator_pct_pobres,pct_pobres,Socioeconomico,0.0
+missingindicator_gini,gini,Socioeconomico,0.0
+missingindicator_renda_per_capita_2010,renda_per_capita_2010,Socioeconomico,0.0
+missingindicator_idhm_longevidade,idhm_longevidade,Socioeconomico,0.0
+missingindicator_idhm_renda,idhm_renda,Socioeconomico,0.0
+missingindicator_idhm_educacao,idhm_educacao,Socioeconomico,0.0
+sigla_uf_ES,sigla_uf,Estado e regiao,0.0
+sigla_uf_MA,sigla_uf,Estado e regiao,0.0
+sigla_uf_RO,sigla_uf,Estado e regiao,0.0
+sigla_uf_RN,sigla_uf,Estado e regiao,0.0
+sigla_uf_RJ,sigla_uf,Estado e regiao,0.0
+sigla_uf_PI,sigla_uf,Estado e regiao,0.0
+sigla_uf_PA,sigla_uf,Estado e regiao,0.0
+sigla_uf_PE,sigla_uf,Estado e regiao,0.0
+sigla_uf_MS,sigla_uf,Estado e regiao,0.0
+sigla_uf_MT,sigla_uf,Estado e regiao,0.0
+regiao_Norte,regiao,Estado e regiao,0.0
+sigla_uf_SC,sigla_uf,Estado e regiao,0.0
+sigla_uf_SE,sigla_uf,Estado e regiao,0.0
+sigla_uf_SP,sigla_uf,Estado e regiao,0.0
+porte_20_50mil,porte,Porte e densidade,0.0
+porte_100_500mil,porte,Porte e densidade,0.0
+porte_50_100mil,porte,Porte e densidade,0.0
+porte_acima_500mil,porte,Porte e densidade,0.0

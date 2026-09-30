@@ -29,3 +29,9 @@ Thumbs.db
 *.pkl
 *.joblib
 *.h5
+
+# Artefatos versionados intencionalmente (necessarios para reproduzir a analise)
+!models/*.joblib
+!reports/*.csv
+!data/raw/*.parquet
+!data/gold/*.parquet
