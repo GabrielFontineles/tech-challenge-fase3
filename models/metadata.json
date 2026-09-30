@@ -1,7 +1,15 @@
 {
-  "timestamp": "2026-09-09T12:43:49.505482",
-  "modelo": "HistGradientBoostingClassifier",
-  "threshold": 0.4580998140250356,
+  "timestamp": "2026-09-30T19:05:28.499638",
+  "versao": "2.1",
+  "variante": "completo",
+  "modelo": "HistGradientBoosting",
+  "design": "features_2023_target_2024",
+  "target": "em_risco_2024",
+  "corte_risco": 60.0,
+  "threshold": 0.431326812687996,
+  "recall_minimo": 0.85,
+  "criterio_selecao": "maior PR-AUC medio em CV 5-fold estratificado",
+  "calibracao": "CalibratedClassifierCV, metodo isotonic, cv 5-fold",
   "features_numericas": [
     "taxa_alf_2023",
     "media_pt_2023",
@@ -9,7 +17,6 @@
     "nivel_alf_2023",
     "meta_2030",
     "gap_meta_2030_2023",
-    "dist_meta_2030_2023",
     "taxa_vs_uf_2023",
     "prop_nivel_0_2023",
     "prop_nivel_1_2023",
@@ -20,32 +27,83 @@
     "prop_nivel_6_2023",
     "prop_nivel_7_2023",
     "prop_nivel_8_2023",
-    "populacao_2023",
-    "log_populacao",
+    "log_populacao_2022",
+    "densidade_2022",
+    "log_pib_per_capita",
     "idhm",
     "idhm_educacao",
     "idhm_renda",
-    "renda_per_capita",
+    "idhm_longevidade",
+    "renda_per_capita_2010",
     "gini",
     "pct_pobres",
-    "pib_per_capita",
-    "log_pib_per_capita"
+    "pct_extremamente_pobres",
+    "analfabetismo_15mais",
+    "expectativa_anos_estudo",
+    "freq_escolar_4a5",
+    "pct_rural"
   ],
   "features_categoricas": [
     "sigla_uf",
     "regiao",
     "porte"
   ],
-  "metricas_teste": {
-    "roc_auc": 0.9102773556231004,
-    "pr_auc": 0.894496984124522,
-    "recall": 0.8595238095238096,
-    "precision": 0.7680851063829788,
-    "f1": 0.8112359550561797,
-    "brier": 0.11938841408632432,
-    "threshold": 0.4580998140250356
+  "fontes_externas": {
+    "IBGE Censo 2022 (SIDRA tabela 4714)": [
+      "log_populacao_2022",
+      "densidade_2022",
+      "porte"
+    ],
+    "IBGE PIB dos Municipios 2021 (SIDRA tabela 5938)": [
+      "log_pib_per_capita"
+    ],
+    "Atlas do Desenvolvimento Humano 2010": [
+      "idhm",
+      "idhm_educacao",
+      "idhm_renda",
+      "idhm_longevidade",
+      "renda_per_capita_2010",
+      "gini",
+      "pct_pobres",
+      "pct_extremamente_pobres",
+      "analfabetismo_15mais",
+      "expectativa_anos_estudo",
+      "freq_escolar_4a5",
+      "pct_rural"
+    ]
   },
-  "target": "em_risco_2024",
-  "design": "features_2023_target_2024",
-  "corte_risco": 60.0
+  "busca_hiperparametros": {
+    "HistGradientBoosting": {
+      "pr_auc_cv": 0.8972444224305873,
+      "pr_auc_treino": 0.9298550468285278,
+      "gap_treino_cv": 0.03261062439794049,
+      "melhores_parametros": {
+        "clf__min_samples_leaf": 80,
+        "clf__max_iter": 200,
+        "clf__max_depth": 5,
+        "clf__learning_rate": 0.02,
+        "clf__l2_regularization": 1.0,
+        "clf__class_weight": "balanced"
+      }
+    },
+    "Logistic Regression": {
+      "pr_auc_cv": 0.8870555346342887,
+      "pr_auc_treino": 0.8977543683701932,
+      "gap_treino_cv": 0.010698833735904523,
+      "melhores_parametros": {
+        "clf__C": 0.37253938395788866,
+        "clf__class_weight": null
+      }
+    }
+  },
+  "metricas_teste": {
+    "roc_auc": 0.9171120398514014,
+    "pr_auc": 0.9048828581805257,
+    "recall": 0.8833333333333333,
+    "precision": 0.7697095435684648,
+    "f1": 0.8226164079822617,
+    "brier_calibrado": 0.11187023384380572,
+    "brier_sem_calibracao": 0.11350564115117155,
+    "threshold": 0.431326812687996
+  }
 }
