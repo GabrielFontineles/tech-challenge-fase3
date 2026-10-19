@@ -39,6 +39,10 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings("ignore")
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.visualization.plots import plot_importancia
+
 RANDOM_STATE = 42
 TARGET = "em_risco_2024"
 N_REPETICOES = 10
@@ -144,11 +148,8 @@ def graficos(shap_values, X_test_proc, mapa, por_grupo, permutacao, sufixo, titu
     importancia = np.abs(shap_values).mean(axis=0)
     top = np.argsort(importancia)[::-1][:15]
     fig, ax = plt.subplots(figsize=(10, 8))
-    ax.barh(range(len(top)), importancia[top][::-1], color="steelblue", alpha=0.85)
-    ax.set_yticks(range(len(top)))
-    ax.set_yticklabels(mapa["feature"].values[top][::-1], fontsize=9)
-    ax.set_xlabel("Media |SHAP| (log-odds)")
-    ax.set_title(f"Top 15 features — SHAP\n{titulo}")
+    plot_importancia(ax, mapa["feature"].values[top], importancia[top],
+                     f"Top 15 features — SHAP\n{titulo}", "Media |SHAP| (log-odds)")
     plt.tight_layout()
     plt.savefig(IMAGES_DIR / f"16_shap_importancia_v21{sufixo}.png", dpi=150)
     plt.close()
@@ -162,12 +163,11 @@ def graficos(shap_values, X_test_proc, mapa, por_grupo, permutacao, sufixo, titu
     plt.close()
 
     fig, axes = plt.subplots(1, 2, figsize=(15, 5))
-    axes[0].barh(por_grupo["grupo"][::-1], por_grupo["participacao_pct"][::-1],
-                 color="steelblue", alpha=0.85)
-    axes[0].set(title="Participacao no SHAP total (%)", xlabel="%")
-    axes[1].barh(permutacao["grupo"][::-1], permutacao["queda_pr_auc_media"][::-1],
-                 xerr=permutacao["queda_pr_auc_std"][::-1], color="darkorange", alpha=0.85)
-    axes[1].set(title="Queda de PR-AUC ao embaralhar o grupo", xlabel="Queda de PR-AUC")
+    plot_importancia(axes[0], por_grupo["grupo"], por_grupo["participacao_pct"],
+                     "Participacao no SHAP total (%)", "%")
+    plot_importancia(axes[1], permutacao["grupo"], permutacao["queda_pr_auc_media"],
+                     "Queda de PR-AUC ao embaralhar o grupo", "Queda de PR-AUC",
+                     erros=permutacao["queda_pr_auc_std"], cor="darkorange")
     fig.suptitle(f"Importancia por grupo de features — {titulo}")
     plt.tight_layout()
     plt.savefig(IMAGES_DIR / f"21_importancia_grupos_v21{sufixo}.png", dpi=150)
