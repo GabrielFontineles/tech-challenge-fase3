@@ -44,29 +44,35 @@ O enunciado menciona o aluno. Optamos pelo município por três razões:
 - Yasmim de Oliveira Coelho
 
 ## Estrutura do repositório
+
+```
 tech-challenge-fase3/
 ├── data/
-│ ├── raw/ <- Silver da Fase 2 (versionada)
-│ ├── gold/ <- Gold da Fase 2 (versionada)
-│ ├── external/ <- IBGE e Atlas (gerados por script, nao versionados)
-│ ├── processed/ <- Datasets de modelagem (gerados por script)
-│ └── README.md <- Origem e obtencao de cada fonte
+│   ├── raw/             <- Silver da Fase 2 (versionada)
+│   ├── gold/            <- Gold da Fase 2 (versionada)
+│   ├── external/        <- IBGE e Atlas (gerados por script, nao versionados)
+│   ├── processed/       <- Datasets de modelagem (gerados por script)
+│   └── README.md        <- Origem e obtencao de cada fonte
 ├── src/
-│ ├── data/ <- build_dataset.py, download_external.py
-│ ├── preprocessing/ <- EDA descritiva
-│ ├── modeling/ <- train.py (tres variantes)
-│ ├── evaluation/ <- Interpretabilidade e analise estrategica
-│ └── legacy/ <- Versao 1 com data leakage (historico, nao usar)
-├── models/ <- Modelos treinados (.joblib) e metadata
-├── notebooks/ <- Notebooks narrados 01-04
-├── reports/ <- Relatorio executivo e tabelas de resultados
-├── images/ <- Graficos (images/v1 guarda os da versao 1)
-├── tests/ <- Testes pytest
-├── Makefile
-└── requirements.txt
-
+│   ├── data/            <- build_dataset.py, download_external.py
+│   ├── preprocessing/   <- EDA descritiva
+│   ├── modeling/        <- train.py (tres variantes)
+│   ├── evaluation/      <- Interpretabilidade e analise estrategica
+│   ├── visualization/   <- Funcoes de grafico compartilhadas
+│   └── legacy/          <- Versao 1 com data leakage (historico, nao usar)
+├── docs/                <- Registro das decisoes tecnicas
+├── models/              <- Modelos treinados (.joblib) e metadata
+├── notebooks/           <- Notebooks narrados e executados 01-04
+├── reports/             <- Relatorio executivo e tabelas de resultados
+├── images/              <- Graficos (images/v1 guarda os da versao 1)
+├── tests/               <- Testes pytest
+├── Makefile             <- Pipeline completa (Linux e macOS)
+└── requirements.txt     <- Dependencias com versoes testadas
+```
 
 ## Etapas de modelagem
+
+As decisões técnicas, com motivos e alternativas descartadas, estão registradas em [`docs/decisoes_tecnicas.md`](docs/decisoes_tecnicas.md).
 
 ### 1. Análise exploratória
 
