@@ -35,10 +35,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from scipy.stats import loguniform
 from sklearn.base import clone
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
@@ -56,6 +55,10 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 import warnings
 warnings.filterwarnings("ignore")
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.visualization.plots import (plot_calibracao, plot_matriz_confusao,
+                                     plot_precision_recall, plot_roc)
 
 RANDOM_STATE = 42
 TARGET = "em_risco_2024"
@@ -268,33 +271,10 @@ def avaliar_teste(calibrado, modelo_base, X_test, y_test, threshold):
 
 def gerar_graficos(y_test, prob, pred, threshold, sufixo):
     fig, axes = plt.subplots(2, 2, figsize=(14, 11))
-
-    fpr, tpr, _ = roc_curve(y_test, prob)
-    axes[0, 0].plot(fpr, tpr, linewidth=2, label=f"ROC-AUC = {roc_auc_score(y_test, prob):.3f}")
-    axes[0, 0].plot([0, 1], [0, 1], "k--")
-    axes[0, 0].set(title="Curva ROC", xlabel="Taxa de falsos positivos",
-                   ylabel="Taxa de verdadeiros positivos")
-    axes[0, 0].legend()
-
-    prec, rec, _ = precision_recall_curve(y_test, prob)
-    axes[0, 1].plot(rec, prec, linewidth=2, color="orange",
-                    label=f"PR-AUC = {average_precision_score(y_test, prob):.3f}")
-    axes[0, 1].axvline(RECALL_MINIMO, color="red", linestyle="--", label=f"Recall alvo ({RECALL_MINIMO})")
-    axes[0, 1].set(title="Curva Precision-Recall", xlabel="Recall", ylabel="Precision")
-    axes[0, 1].legend()
-
-    frac_pos, prob_media = calibration_curve(y_test, prob, n_bins=10)
-    axes[1, 0].plot(prob_media, frac_pos, "o-", label="Modelo calibrado")
-    axes[1, 0].plot([0, 1], [0, 1], "k--", label="Calibracao perfeita")
-    axes[1, 0].set(title="Curva de calibracao", xlabel="Probabilidade prevista",
-                   ylabel="Fracao observada em risco")
-    axes[1, 0].legend()
-
-    sns.heatmap(confusion_matrix(y_test, pred), annot=True, fmt="d", cmap="Blues", ax=axes[1, 1],
-                xticklabels=["Nao risco", "Em risco"], yticklabels=["Nao risco", "Em risco"])
-    axes[1, 1].set(title=f"Matriz de confusao (threshold = {threshold:.3f})",
-                   xlabel="Previsto", ylabel="Real")
-
+    plot_roc(axes[0, 0], y_test, prob)
+    plot_precision_recall(axes[0, 1], y_test, prob, recall_alvo=RECALL_MINIMO)
+    plot_calibracao(axes[1, 0], y_test, prob)
+    plot_matriz_confusao(axes[1, 1], y_test, pred, threshold)
     plt.tight_layout()
     caminho = IMAGES_DIR / f"15_resultados_v21{sufixo}.png"
     plt.savefig(caminho, dpi=150)
