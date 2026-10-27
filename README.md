@@ -55,7 +55,8 @@ tech-challenge-fase3/
 │   └── README.md        <- Origem e obtencao de cada fonte
 ├── src/
 │   ├── data/            <- build_dataset.py, download_external.py
-│   ├── preprocessing/   <- EDA descritiva
+│   ├── eda/             <- Scripts de EDA descritiva
+│   ├── preprocessing/   <- pipeline.py: imputacao, padronizacao e one-hot do modelo
 │   ├── modeling/        <- train.py (tres variantes), predict_2025.py
 │   ├── evaluation/      <- Interpretabilidade e analise estrategica
 │   ├── visualization/   <- Funcoes de grafico compartilhadas
@@ -99,10 +100,10 @@ As **features são observadas em 2023**, e o **target em 2024**. Nenhuma variáv
 
 ### 4. Pipeline scikit-learn
 
-Todo o pré-processamento fica dentro do pipeline, ajustado apenas nos dados de treino de cada fold:
+Todo o pré-processamento fica dentro do pipeline, ajustado apenas nos dados de treino de cada fold. Ele é definido em `src/preprocessing/pipeline.py` e importado por `src/modeling/train.py`:
 
 - **Numéricas:** imputação pela mediana, com indicador de ausência (`add_indicator=True`), e padronização
-- **Categóricas:** imputação pelo valor mais frequente e one-hot encoding
+- **Categóricas:** imputação pelo valor mais frequente e one-hot encoding; uma categoria não vista no treino vira colunas zeradas
 
 ### 5. Validação
 
