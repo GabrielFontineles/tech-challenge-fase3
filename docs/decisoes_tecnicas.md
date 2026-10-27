@@ -95,3 +95,10 @@ Registro das principais decisões do projeto: o que foi decidido, por quê, quai
 
 - **Decisão:** versionar os modelos, as tabelas de resultados e a Silver/Gold da Fase 2; regenerar por script os dados externos e processados. Manter a versão 1 em `src/legacy/`, com a explicação do vazamento.
 - **Comprovação:** em um clone limpo, com ambiente virtual novo, a instalação pelo `requirements.txt`, a regeneração dos dados e os 24 testes passam, incluindo a reprodução exata das métricas pelo modelo versionado.
+
+## D16 — Previsão de 2025 com o modelo final, sem retreino
+
+- **Decisão:** aplicar o modelo final aos resultados de 2024, que ocupam as colunas de "ano anterior" (`*_2023`), mantendo as mesmas fontes externas do treino. A lista de 2025 passa a ser a lista de priorização principal; a de 2024 fica como validação retrospectiva.
+- **Motivo:** o enunciado pede prever municípios que podem não atingir metas futuras. A lista de 2024 descreve um ano já observado.
+- **Alternativa descartada:** retreinar com 2024 como target e 2023 como features para depois pontuar 2025. É o mesmo par de anos já usado; não haveria dado novo para treinar.
+- **Consequências:** 5.493 municípios pontuados (inclui os 574 sem resultado em 2023; exclui AC e DF). A lista não tem métrica até a divulgação de 2025. O diagnóstico de distribuição entre 2023 e 2024 fica salvo junto com a previsão. Um teste garante que as colunas de ano anterior recebem os valores de 2024.

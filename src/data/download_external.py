@@ -146,6 +146,24 @@ def carregar_atlas_2010():
     return atlas
 
 
+def juntar_fontes_externas(base, df_censo, df_pib, df_atlas):
+    """Junta IBGE e Atlas a uma base por municipio e calcula o PIB per capita.
+
+    Usada no treino (enriquecer_dataset) e na previsao de 2025 (predict_2025.py),
+    para que as duas etapas montem as features externas do mesmo jeito.
+    """
+    base = base.copy()
+    base["id_municipio"] = base["id_municipio"].astype(str)
+    df = base.merge(df_censo, on="id_municipio", how="left")
+    df = df.merge(df_pib, on="id_municipio", how="left")
+    df = df.merge(df_atlas, on="id_municipio", how="left")
+
+    # PIB per capita: PIB 2021 (mil reais -> reais) / populacao Censo 2022
+    df["pib_per_capita"] = df["pib_2021_mil_reais"] * 1000 / df["populacao_2022"]
+    df["log_pib_per_capita"] = np.log(df["pib_per_capita"])
+    return df
+
+
 def enriquecer_dataset(df_censo, df_pib, df_atlas):
     """Junta as fontes externas ao dataset temporal."""
     print("\nEnriquecendo dataset de modelagem...")
@@ -155,13 +173,7 @@ def enriquecer_dataset(df_censo, df_pib, df_atlas):
     if not base["id_municipio"].str.len().eq(7).all():
         sys.exit("ERRO: dataset base contem id_municipio fora do padrao de 7 digitos")
 
-    df = base.merge(df_censo, on="id_municipio", how="left")
-    df = df.merge(df_pib, on="id_municipio", how="left")
-    df = df.merge(df_atlas, on="id_municipio", how="left")
-
-    # PIB per capita: PIB 2021 (mil reais -> reais) / populacao Censo 2022
-    df["pib_per_capita"] = df["pib_2021_mil_reais"] * 1000 / df["populacao_2022"]
-    df["log_pib_per_capita"] = np.log(df["pib_per_capita"])
+    df = juntar_fontes_externas(base, df_censo, df_pib, df_atlas)
 
     print("\nCobertura do merge (municipios do dataset com dado externo):")
     for col in ["populacao_2022", "pib_per_capita", "idhm", "analfabetismo_15mais"]:

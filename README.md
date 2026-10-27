@@ -56,7 +56,7 @@ tech-challenge-fase3/
 ├── src/
 │   ├── data/            <- build_dataset.py, download_external.py
 │   ├── preprocessing/   <- EDA descritiva
-│   ├── modeling/        <- train.py (tres variantes)
+│   ├── modeling/        <- train.py (tres variantes), predict_2025.py
 │   ├── evaluation/      <- Interpretabilidade e analise estrategica
 │   ├── visualization/   <- Funcoes de grafico compartilhadas
 │   └── legacy/          <- Versao 1 com data leakage (historico, nao usar)
@@ -94,6 +94,8 @@ As **features são observadas em 2023**, e o **target em 2024**. Nenhuma variáv
 | A — Histórico educacional 2023 | Taxa, média de português, participação, nível, meta 2030, distância da meta, posição relativa à UF, proporção de alunos por nível (0 a 8) | Fase 2 |
 | B — Território | UF, região, porte (categóricas); log da população, densidade | IBGE 2022 |
 | C — Socioeconômico | IDHM e dimensões, renda per capita, Gini, % pobres e extremamente pobres, analfabetismo 15+, expectativa de anos de estudo, frequência escolar 4-5 anos, % rural, log do PIB per capita | Atlas 2010, IBGE 2021 |
+
+> As proporções de alunos por nível (0 a 8) valem 0 em todos os municípios na Silver de 2023. Como uma árvore não divide uma coluna constante, essas 9 variáveis não contribuem para o modelo (ver [Limitações](#limitações)).
 
 ### 4. Pipeline scikit-learn
 
@@ -191,7 +193,9 @@ Leitura:
 
 - **Priorização antecipada:** com recall de 0,88, o modelo identifica a maioria dos municípios em risco antes do resultado do ciclo seguinte. Como o território e a condição socioeconômica já concentram grande parte do sinal, a priorização pode começar mesmo com dados educacionais defasados.
 - **Faixas de risco confiáveis:** por estarem calibradas, as probabilidades podem ser comunicadas diretamente a gestores ("9 em cada 10 municípios nesta faixa estavam em risco").
-- **Lista de priorização:** `reports/priorizacao_municipios_v21.csv` reúne os 1.166 municípios com risco previsto acima do threshold e que precisariam de mais que o dobro do ritmo nacional para a meta de 2030. Para uso por uma secretaria estadual, a lista deve ser filtrada por UF.
+- **Previsão para 2025:** `src/modeling/predict_2025.py` aplica o modelo final, sem retreino, aos resultados de 2024, que entram no lugar de "ano anterior". São pontuados 5.493 municípios de 24 UFs, inclusive os que não tinham resultado em 2023. Desses, 2.256 (41,1%) ficam acima do threshold, contra 42,3% em risco observado em 2024 no mesmo universo. A lista está em `reports/risco_2025.csv`, com resumo por UF em `reports/risco_2025_por_uf.csv`.
+- **Lista de priorização 2025:** `reports/priorizacao_2025.csv` reúne os 1.284 municípios com risco previsto acima do threshold em 2025 e que precisariam de mais que o dobro do ritmo nacional para a meta de 2030. Para uso por uma secretaria estadual, a lista deve ser filtrada por UF.
+- **Lista retrospectiva 2024:** `reports/priorizacao_municipios_v21.csv` (1.166 municípios) usa as probabilidades out-of-fold para 2024, ano já observado. Serve para validar o critério de priorização, não para planejar o próximo ciclo.
 - **Aprendizado entre estados:** os municípios vulneráveis fora de risco, sobretudo no Ceará, Pernambuco, Piauí e Maranhão, são candidatos naturais a estudos de boas práticas.
 
 ## Limitações
@@ -204,11 +208,13 @@ Leitura:
 - **Viés de seleção:** 597 municípios sem resultado em 2023 ficaram de fora.
 - **Três UFs fora do modelo:** Roraima não aparece na Silver da Fase 2, e Acre (22 municípios) e Distrito Federal (1) só têm resultado de 2024, então nenhum deles entra no pareamento 2023→2024. O modelo não deve ser usado para pontuar municípios dessas UFs: o one-hot de `sigla_uf` as trataria como categoria desconhecida (todas as colunas zeradas) e a média estadual de 2023 ficaria vazia, sem que o modelo tenha visto exemplo algum desses estados.
 - **Ruído em municípios pequenos,** com poucos alunos avaliados.
+- **Previsão de 2025 sem métrica:** não existe resultado de 2025 para comparar. O indicador de 2024 vem de avaliações estaduais equalizadas com o Saeb, o que pode deslocar as probabilidades. O diagnóstico em `reports/previsao_2025_resumo.json` mostra mudança pequena nos municípios pareados (taxa média de 60,5 para 63,0, desvio de 20,0 para 19,4), compatível com melhora e não com quebra de escala.
+- **Proporções por nível zeradas em 2023:** as 9 variáveis `prop_nivel_*` são constantes no ano de treino e não entram de fato no modelo. Zerá-las na previsão de 2025 não altera nenhuma probabilidade.
 - **Detalhes de método:** a variante só socioeconômica apresenta overfitting (gap de 0,12 entre treino e CV); a silhueta de 0,27 indica agrupamento útil, mas sem fronteiras nítidas; a calibração isotônica gera probabilidades de 1,0 no degrau mais alto, que devem ser lidas como "acima de 99%"; a projeção para 2030 é um cenário de tendência linear, não uma previsão.
 
 ## Possíveis evoluções
 
-- Incorporar novos ciclos do indicador para validação temporal e para prever 2025 a partir dos dados de 2024
+- Comparar a previsão de `reports/risco_2025.csv` com o resultado de 2025, quando divulgado, e fazer validação temporal com novos ciclos
 - Substituir o Atlas 2010 por indicadores socioeconômicos do Censo 2022, quando divulgados por município
 - Incluir Censo Escolar (infraestrutura, formação docente), IDEB, FUNDEB e Cadastro Único
 - Separar as redes municipal e estadual
@@ -232,6 +238,7 @@ python src/modeling/train.py --sem-historico
 python src/modeling/train.py --so-socioeconomico
 python src/evaluation/shap_analysis_v2.py          # repetir com as opcoes acima
 python src/evaluation/strategic_v2.py
+python src/modeling/predict_2025.py               # risco 2025 a partir de 2024
 python -m pytest tests/ -v
 ```
 

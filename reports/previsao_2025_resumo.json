@@ -1,0 +1,75 @@
+{
+  "ano_base": 2024,
+  "ano_previsto": 2025,
+  "modelo": "HistGradientBoosting",
+  "threshold": 0.431326812687996,
+  "municipios_pontuados": 5493,
+  "ufs": 24,
+  "ufs_fora_do_modelo": [
+    "AC",
+    "DF",
+    "RR"
+  ],
+  "prob_media_2025": 0.3609,
+  "acima_threshold": 2256,
+  "pct_acima_threshold": 41.07,
+  "em_risco_observado_2024_pct": 42.33,
+  "priorizados_2025": 1284,
+  "variacao_nacional_pts_ano": 2.545,
+  "faixas": [
+    {
+      "faixa_risco_2025": "Baixo",
+      "municipios": 2751,
+      "prob_media": 0.0528,
+      "em_risco_2024": 0.0589
+    },
+    {
+      "faixa_risco_2025": "Moderado",
+      "municipios": 486,
+      "prob_media": 0.3067,
+      "em_risco_2024": 0.3951
+    },
+    {
+      "faixa_risco_2025": "Alto",
+      "municipios": 1054,
+      "prob_media": 0.5662,
+      "em_risco_2024": 0.7628
+    },
+    {
+      "faixa_risco_2025": "Critico",
+      "municipios": 1202,
+      "prob_media": 0.9081,
+      "em_risco_2024": 0.9709
+    }
+  ],
+  "diagnostico_distribuicao_bloco_a": {
+    "municipios_pareados": 4919,
+    "colunas": {
+      "taxa_alf_2023": {
+        "media_2023": 60.45,
+        "media_2024": 62.996,
+        "desvio_2023": 19.974,
+        "desvio_2024": 19.419
+      },
+      "media_pt_2023": {
+        "media_2023": 750.354,
+        "media_2024": 752.748,
+        "desvio_2023": 24.201,
+        "desvio_2024": 22.587
+      },
+      "particip_2023": {
+        "media_2023": 89.618,
+        "media_2024": 90.995,
+        "desvio_2023": 6.311,
+        "desvio_2024": 6.442
+      },
+      "prop_nivel_0_2023": {
+        "media_2023": 0.0,
+        "media_2024": 2.144,
+        "desvio_2023": 0.0,
+        "desvio_2024": 2.614
+      }
+    }
+  },
+  "ressalva": "Indicador de 2024 baseado em avaliacoes estaduais equalizadas com o Saeb; pode haver mudanca de distribuicao em relacao a 2023. Sem 2025 observado, a lista nao tem metrica de desempenho."
+}
