@@ -29,7 +29,7 @@ Tech Challenge Fase 3 · FIAP IA Scientist
 
 ## Recomendações
 
-1. **Priorizar** os 1.166 municípios da lista de priorização (`priorizacao_municipios_v21.csv`), organizada por estado
+1. **Priorizar** os 1.284 municípios da lista de 2025 (`priorizacao_2025.csv`), com alto risco previsto e ritmo insuficiente para a meta de 2030, organizada por estado
 2. **Estudar as experiências estaduais bem-sucedidas** (Ceará, Pernambuco, Piauí, Maranhão) antes de desenhar novos programas
 3. **Não esperar o próximo resultado de avaliação:** o perfil do território já indica a maior parte do risco
 4. **Acompanhar qualidade, não só matrícula:** a frequência na pré-escola é alta justamente nos municípios de maior risco

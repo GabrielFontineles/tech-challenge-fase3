@@ -53,13 +53,15 @@ def carregar_municipio_silver():
     print(f"  Shape total: {df_total.shape}")
     return df_total
 
-def construir_features_2023(df):
+def construir_features_2023(df, ano=2023):
+    # ano=2023 no treino; ano=2024 na previsao de 2025 (predict_2025.py).
+    # As colunas *_2023 significam "ano anterior ao previsto".
     """
     Bloco A — Histórico educacional 2023.
     Todas as features são de 2023 — seguro usar como preditores do target 2024.
     """
-    print("\nConstruindo features 2023 (Bloco A)...")
-    df_2023 = df[df['ano'] == 2023].copy()
+    print(f"\nConstruindo features do ano {ano} (Bloco A)...")
+    df_2023 = df[df['ano'] == ano].copy()
 
     # Extrai cod_uf e adiciona sigla/região
     df_2023['cod_uf'] = df_2023['id_municipio'].astype(str).str[:2].astype(int)
@@ -107,7 +109,7 @@ def construir_features_2023(df):
     ]
 
     df_features = df_2023[colunas_bloco_a].copy()
-    print(f"  Municípios com features 2023: {len(df_features)}")
+    print(f"  Municípios com features de {ano}: {len(df_features)}")
     return df_features
 
 def construir_target_2024(df):
