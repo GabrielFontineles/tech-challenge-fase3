@@ -14,6 +14,18 @@
 
 Gerados pela pipeline do Tech Challenge Fase 2 a partir da Base dos Dados (dataset `br_inep_avaliacao_alfabetizacao`). A camada Silver traz, por município, ano (2023 e 2024) e rede: taxa de alfabetização, média de português, proporção de alunos por nível de proficiência, participação e metas de 2024 a 2030. O projeto usa a rede **Total**.
 
+### Cobertura por UF
+
+O pareamento 2023→2024 mantém 4.919 municípios de **24 UFs**. Três ficam de fora:
+
+| UF | Situação na Silver | Efeito |
+|---|---|---|
+| Roraima (RR) | Ausente em 2023 e 2024 | Fora do modelo |
+| Acre (AC) | 22 municípios, só 2024 | Excluído pelo filtro 2023 + 2024 |
+| Distrito Federal (DF) | 1 município, só 2024 | Excluído pelo filtro 2023 + 2024 |
+
+Os 23 municípios do AC e do DF fazem parte dos 597 sem resultado em 2023. O modelo não deve ser aplicado a essas UFs, porque nunca viu exemplos delas: o one-hot de `sigla_uf` as trataria como categoria desconhecida. A lista está em `UFS_FORA_DO_MODELO` (`src/data/build_dataset.py`) e um teste garante que o dataset não as contém.
+
 ## IBGE (automático)
 
 Obtido pela API SIDRA, sem credencial, em `download_external.py`:
