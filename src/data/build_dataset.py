@@ -40,6 +40,11 @@ REGIOES = {
     'GO': 'Centro-Oeste', 'DF': 'Centro-Oeste'
 }
 
+# UFs sem resultado nos dois anos (2023 e 2024) na Silver da Fase 2.
+# RR nao aparece em nenhum ano; AC (22 municipios) e DF (1) so tem 2024.
+# Ficam fora do pareamento 2023 -> 2024 e, portanto, fora do treino.
+UFS_FORA_DO_MODELO = {'AC', 'DF', 'RR'}
+
 def carregar_municipio_silver():
     """Carrega dados Silver de município."""
     print("Carregando municipio_silver...")
@@ -133,6 +138,8 @@ def parear_datasets(df_features, df_target):
     print("\nPareando 2023 → 2024...")
     df = pd.merge(df_features, df_target, on='id_municipio', how='inner')
     print(f"  Municípios pareados: {len(df)}")
+    ufs_ausentes = sorted(set(UF_MAP.values()) - set(df['sigla_uf']))
+    print(f"  UFs no dataset: {df['sigla_uf'].nunique()} | fora do modelo: {', '.join(ufs_ausentes)}")
     print(f"  Features: {len(df.columns) - 3} (excluindo id, taxa_2024 e target)")
     return df
 
