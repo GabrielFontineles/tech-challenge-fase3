@@ -45,6 +45,13 @@ def test_municipios_pareados(dataset):
     assert len(dataset) > 4000
 
 
+def test_ufs_fora_do_modelo(dataset):
+    from src.data.build_dataset import UF_MAP, UFS_FORA_DO_MODELO
+    ufs = set(dataset["sigla_uf"])
+    assert not ufs & UFS_FORA_DO_MODELO
+    assert ufs == set(UF_MAP.values()) - UFS_FORA_DO_MODELO
+
+
 def test_codigo_municipio_com_7_digitos(dataset):
     assert dataset["id_municipio"].astype(str).str.len().eq(7).all()
 

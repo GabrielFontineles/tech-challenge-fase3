@@ -33,7 +33,7 @@ O enunciado menciona o aluno. Optamos pelo município por três razões:
 | IBGE, PIB dos Municípios (SIDRA tabela 5938) | PIB a preços correntes | 2021 | API pública, sem credencial |
 | Atlas do Desenvolvimento Humano | IDHM e dimensões, renda, Gini, pobreza, analfabetismo adulto, frequência na pré-escola, % rural | 2010 | Arquivo baixado em atlasbrasil.org.br |
 
-**Dataset de modelagem:** 4.919 municípios com dados em 2023 e em 2024. Dos 5.516 municípios avaliados em 2024, 597 não tinham resultado em 2023 e ficaram de fora. A cobertura das fontes externas é de 100% (IBGE) e 99,9% (Atlas: os 4 ausentes são municípios criados depois de 2010). Detalhes em [`data/README.md`](data/README.md).
+**Dataset de modelagem:** 4.919 municípios com dados em 2023 e em 2024. Dos 5.516 municípios avaliados em 2024, 597 não tinham resultado em 2023 e ficaram de fora. O modelo cobre 24 UFs: Acre, Distrito Federal e Roraima não entram (ver [Limitações](#limitações)). A cobertura das fontes externas é de 100% (IBGE) e 99,9% (Atlas: os 4 ausentes são municípios criados depois de 2010). Detalhes em [`data/README.md`](data/README.md).
 
 ## Equipe
 
@@ -202,6 +202,7 @@ Leitura:
 - **Associação, não causalidade:** nenhum resultado permite afirmar que uma variável causa o risco.
 - **Corte binário arbitrário (60%)** e rede Total, sem separar redes municipal e estadual.
 - **Viés de seleção:** 597 municípios sem resultado em 2023 ficaram de fora.
+- **Três UFs fora do modelo:** Roraima não aparece na Silver da Fase 2, e Acre (22 municípios) e Distrito Federal (1) só têm resultado de 2024, então nenhum deles entra no pareamento 2023→2024. O modelo não deve ser usado para pontuar municípios dessas UFs: o one-hot de `sigla_uf` as trataria como categoria desconhecida (todas as colunas zeradas) e a média estadual de 2023 ficaria vazia, sem que o modelo tenha visto exemplo algum desses estados.
 - **Ruído em municípios pequenos,** com poucos alunos avaliados.
 - **Detalhes de método:** a variante só socioeconômica apresenta overfitting (gap de 0,12 entre treino e CV); a silhueta de 0,27 indica agrupamento útil, mas sem fronteiras nítidas; a calibração isotônica gera probabilidades de 1,0 no degrau mais alto, que devem ser lidas como "acima de 99%"; a projeção para 2030 é um cenário de tendência linear, não uma previsão.
 
