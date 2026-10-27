@@ -1,6 +1,6 @@
 # Makefile — Tech Challenge Fase 3
 
-.PHONY: install dataset external train explain strategy test all help
+.PHONY: install dataset external train explain strategy predict test all help
 
 ## Instala as dependencias
 install:
@@ -30,12 +30,16 @@ explain:
 strategy:
 	python src/evaluation/strategic_v2.py
 
+## Previsao de risco 2025 (features de 2024, modelo final sem retreino)
+predict:
+	python src/modeling/predict_2025.py
+
 ## Roda os testes
 test:
 	python -m pytest tests/ -v
 
 ## Pipeline completa
-all: dataset external train explain strategy test
+all: dataset external train explain strategy predict test
 
 help:
-	@echo "Uso: make [install|dataset|external|train|explain|strategy|test|all]"
+	@echo "Uso: make [install|dataset|external|train|explain|strategy|predict|test|all]"
