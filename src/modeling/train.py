@@ -38,10 +38,8 @@ import pandas as pd
 from scipy.stats import loguniform
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (average_precision_score, brier_score_loss,
                              classification_report, confusion_matrix, f1_score,
@@ -51,12 +49,12 @@ from sklearn.model_selection import (RandomizedSearchCV, StratifiedKFold,
                                      cross_val_predict, cross_validate,
                                      train_test_split)
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 import warnings
 warnings.filterwarnings("ignore")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.preprocessing.pipeline import criar_preprocessador
 from src.visualization.plots import (plot_calibracao, plot_matriz_confusao,
                                      plot_precision_recall, plot_roc)
 
@@ -124,18 +122,6 @@ def carregar_dados(numericas, categoricas):
     print(f"Dataset: {len(df)} municipios | {len(numericas)} numericas + {len(categoricas)} categoricas")
     print(f"Em risco: {y.sum()} ({y.mean() * 100:.1f}%)")
     return X, y
-
-
-def criar_preprocessador(numericas, categoricas):
-    num = Pipeline([
-        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
-        ("scaler", StandardScaler()),
-    ])
-    cat = Pipeline([
-        ("imputer", SimpleImputer(strategy="most_frequent")),
-        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
-    ])
-    return ColumnTransformer([("num", num, numericas), ("cat", cat, categoricas)])
 
 
 def montar(clf, numericas, categoricas):
