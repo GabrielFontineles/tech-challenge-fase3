@@ -94,7 +94,7 @@ Registro das principais decisões do projeto: o que foi decidido, por quê, quai
 ## D15 — Versionamento de artefatos e preservação da versão 1
 
 - **Decisão:** versionar os modelos, as tabelas de resultados e a Silver/Gold da Fase 2; regenerar por script os dados externos e processados. Manter a versão 1 em `src/legacy/`, com a explicação do vazamento.
-- **Comprovação:** em um clone limpo, com ambiente virtual novo, a instalação pelo `requirements.txt`, a regeneração dos dados e os 24 testes passam, incluindo a reprodução exata das métricas pelo modelo versionado.
+- **Comprovação:** em um clone limpo, com ambiente virtual novo, a instalação pelo `requirements.txt`, a regeneração dos dados e os 31 testes passam, incluindo a reprodução exata das métricas pelo modelo versionado.
 
 ## D16 — Previsão de 2025 com o modelo final, sem retreino
 
