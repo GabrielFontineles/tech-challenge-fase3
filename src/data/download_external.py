@@ -10,11 +10,17 @@ Fontes:
     arquivo censo_total_1991_2010.xlsx, aba "MUN 91-00-10",
     baixado manualmente em atlasbrasil.org.br e salvo em data/external/raw/
 
+Os tres arquivos processados (ibge_censo2022.parquet, ibge_pib2021.parquet e
+atlas_2010.parquet) sao versionados em data/external/. Por padrao o script os
+reutiliza, sem acessar a API nem o xlsx; com --atualizar, baixa o IBGE de novo
+e rele o Atlas a partir do xlsx.
+
 Nao ha geracao de dados simulados: se uma fonte faltar ou falhar,
 o script interrompe a execucao com erro explicito.
 Todas as fontes sao anteriores a 2024 (ano do target).
 """
 
+import argparse
 import sys
 import requests
 import numpy as np
@@ -60,9 +66,21 @@ def consultar_sidra(consulta):
     return df
 
 
-def baixar_populacao_censo2022():
+def usar_snapshot(caminho, atualizar):
+    """Retorna o arquivo versionado, se existir e nao for pedida atualizacao."""
+    if caminho.exists() and not atualizar:
+        df = pd.read_parquet(caminho)
+        print(f"  Usando arquivo versionado: {caminho} ({len(df)} municipios)")
+        return df
+    return None
+
+
+def baixar_populacao_censo2022(atualizar=False):
     """Tabela 4714 — populacao, area e densidade (Censo 2022)."""
     print("\n[1/3] IBGE — Censo 2022 (tabela 4714)")
+    snapshot = usar_snapshot(EXTERNAL_DIR / "ibge_censo2022.parquet", atualizar)
+    if snapshot is not None:
+        return snapshot
     df = consultar_sidra("t/4714/n6/all/v/all/p/2022")
 
     wide = df.pivot_table(index="id_municipio", columns="D2N",
@@ -100,9 +118,12 @@ def baixar_populacao_censo2022():
     return wide
 
 
-def baixar_pib_2021():
+def baixar_pib_2021(atualizar=False):
     """Tabela 5938 — PIB a precos correntes 2021 (mil reais)."""
     print("\n[2/3] IBGE — PIB dos Municipios 2021 (tabela 5938)")
+    snapshot = usar_snapshot(EXTERNAL_DIR / "ibge_pib2021.parquet", atualizar)
+    if snapshot is not None:
+        return snapshot
     df = consultar_sidra("t/5938/n6/all/v/37/p/2021")
     pib = df[["id_municipio", "valor"]].rename(columns={"valor": "pib_2021_mil_reais"})
 
@@ -112,13 +133,13 @@ def baixar_pib_2021():
     return pib
 
 
-def carregar_atlas_2010():
+def carregar_atlas_2010(atualizar=False):
     """Atlas do Desenvolvimento Humano — recorte municipal de 2010."""
     print("\n[3/3] Atlas do Desenvolvimento Humano — Censo 2010")
     cache = EXTERNAL_DIR / "atlas_2010.parquet"
-    if cache.exists():
-        print(f"  Usando cache: {cache}")
-        return pd.read_parquet(cache)
+    snapshot = usar_snapshot(cache, atualizar)
+    if snapshot is not None:
+        return snapshot
 
     if not ATLAS_ARQUIVO.exists():
         sys.exit(
@@ -187,12 +208,17 @@ def enriquecer_dataset(df_censo, df_pib, df_atlas):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Fontes externas: IBGE e Atlas")
+    parser.add_argument("--atualizar", action="store_true",
+                        help="ignora os arquivos versionados: baixa o IBGE pela API e rele o xlsx do Atlas")
+    args = parser.parse_args()
+
     print("=" * 60)
     print("DOWNLOAD DE DADOS EXTERNOS — FONTES REAIS")
     print("=" * 60)
-    df_censo = baixar_populacao_censo2022()
-    df_pib = baixar_pib_2021()
-    df_atlas = carregar_atlas_2010()
+    df_censo = baixar_populacao_censo2022(args.atualizar)
+    df_pib = baixar_pib_2021(args.atualizar)
+    df_atlas = carregar_atlas_2010(args.atualizar)
     enriquecer_dataset(df_censo, df_pib, df_atlas)
     print("\n" + "=" * 60)
     print("Concluido. Nenhum dado simulado foi gerado.")

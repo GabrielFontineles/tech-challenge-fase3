@@ -102,3 +102,10 @@ Registro das principais decisões do projeto: o que foi decidido, por quê, quai
 - **Motivo:** o enunciado pede prever municípios que podem não atingir metas futuras. A lista de 2024 descreve um ano já observado.
 - **Alternativa descartada:** retreinar com 2024 como target e 2023 como features para depois pontuar 2025. É o mesmo par de anos já usado; não haveria dado novo para treinar.
 - **Consequências:** 5.493 municípios pontuados (inclui os 574 sem resultado em 2023; exclui AC e DF). A lista não tem métrica até a divulgação de 2025. O diagnóstico de distribuição entre 2023 e 2024 fica salvo junto com a previsão. Um teste garante que as colunas de ano anterior recebem os valores de 2024.
+
+## D17 — Versionar os dados externos já processados
+
+- **Decisão:** versionar `ibge_censo2022.parquet`, `ibge_pib2021.parquet` e `atlas_2010.parquet` em `data/external/`. O `download_external.py` passa a reutilizá-los por padrão; `--atualizar` baixa o IBGE pela API e relê o xlsx do Atlas.
+- **Motivo:** na revisão, a API do IBGE não estava acessível e 6 testes foram pulados. O xlsx do Atlas exige download manual. Com os arquivos versionados, um clone limpo roda a pipeline inteira sem internet nem download manual.
+- **Alternativa descartada:** versionar só o IBGE. O avaliador continuaria dependendo do download manual do Atlas.
+- **Consequência:** os dados são públicos, e os arquivos guardam só as colunas usadas. Um teste verifica a integridade de cada um.
