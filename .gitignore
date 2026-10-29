@@ -35,6 +35,9 @@ Thumbs.db
 !reports/*.csv
 !data/raw/*.parquet
 !data/gold/*.parquet
+!data/external/ibge_censo2022.parquet
+!data/external/ibge_pib2021.parquet
+!data/external/atlas_2010.parquet
 
 # Ambiente virtual
 .venv/

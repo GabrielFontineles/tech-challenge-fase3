@@ -50,7 +50,7 @@ tech-challenge-fase3/
 ├── data/
 │   ├── raw/             <- Silver da Fase 2 (versionada)
 │   ├── gold/            <- Gold da Fase 2 (versionada)
-│   ├── external/        <- IBGE e Atlas (gerados por script, nao versionados)
+│   ├── external/        <- IBGE e Atlas processados (versionados)
 │   ├── processed/       <- Datasets de modelagem (gerados por script)
 │   └── README.md        <- Origem e obtencao de cada fonte
 ├── src/
@@ -225,7 +225,7 @@ Leitura:
 
 ## Como executar
 
-Pré-requisitos: Python 3.14 e o arquivo do Atlas (`censo_total_1991_2010.xlsx`) em `data/external/raw/` — ver [`data/README.md`](data/README.md).
+Pré-requisito: Python 3.14. Os dados do IBGE e do Atlas já vêm processados em `data/external/`, então a pipeline roda sem internet e sem download manual. Para baixá-los de novo, use `python src/data/download_external.py --atualizar`, que exige o arquivo do Atlas (`censo_total_1991_2010.xlsx`) em `data/external/raw/` — ver [`data/README.md`](data/README.md).
 
 ```bash
 git clone https://github.com/GabrielFontineles/tech-challenge-fase3.git
@@ -233,7 +233,7 @@ cd tech-challenge-fase3
 pip install -r requirements.txt
 
 python src/data/build_dataset.py                   # dataset temporal 2023 -> 2024
-python src/data/download_external.py               # IBGE (API) + Atlas
+python src/data/download_external.py               # IBGE e Atlas (arquivos versionados)
 python src/modeling/train.py                       # modelo completo
 python src/modeling/train.py --sem-historico
 python src/modeling/train.py --so-socioeconomico
