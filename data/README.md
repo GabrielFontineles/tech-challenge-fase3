@@ -6,8 +6,8 @@
 |---|---|---|---|
 | `raw/` | Silver da Fase 2 (`municipio_silver.parquet`, `uf_silver.parquet`) | Sim | Já incluído no repositório |
 | `gold/` | Gold da Fase 2 (ranking, evolução, análise municipal, visão Brasil) | Sim | Já incluído no repositório |
-| `external/` | IBGE e Atlas processados | Não | `python src/data/download_external.py` |
-| `external/raw/` | Arquivo original do Atlas | Não | Download manual (abaixo) |
+| `external/` | IBGE e Atlas processados (`ibge_censo2022`, `ibge_pib2021`, `atlas_2010`) | Sim | Já incluído; `download_external.py --atualizar` baixa de novo |
+| `external/raw/` | Arquivo original do Atlas | Não | Só para `--atualizar` (download manual, abaixo) |
 | `processed/` | Datasets de modelagem | Não | `build_dataset.py` e `download_external.py` |
 
 ## Fase 2 (Silver e Gold)
@@ -26,27 +26,30 @@ O pareamento 2023→2024 mantém 4.919 municípios de **24 UFs**. Três ficam de
 
 Os 23 municípios do AC e do DF fazem parte dos 597 sem resultado em 2023. O modelo não deve ser aplicado a essas UFs, porque nunca viu exemplos delas: o one-hot de `sigla_uf` as trataria como categoria desconhecida. A lista está em `UFS_FORA_DO_MODELO` (`src/data/build_dataset.py`) e um teste garante que o dataset não as contém.
 
-## IBGE (automático)
+## IBGE (versionado; API opcional)
 
-Obtido pela API SIDRA, sem credencial, em `download_external.py`:
+Obtido pela API SIDRA, sem credencial. Os arquivos processados ficam versionados em `data/external/`, e `download_external.py --atualizar` consulta a API de novo:
 
 - **Tabela 4714**, Censo 2022: população residente, área (km²) e densidade
 - **Tabela 5938**, PIB dos Municípios 2021: PIB a preços correntes (mil reais)
 
 Chave de junção: código IBGE do município com **7 dígitos**.
 
-## Atlas do Desenvolvimento Humano (manual)
+## Atlas do Desenvolvimento Humano (versionado; xlsx opcional)
+
+O recorte usado (`external/atlas_2010.parquet`, 12 colunas de 2010) é versionado. Os passos abaixo só são necessários para regerá-lo:
 
 1. Acessar [atlasbrasil.org.br](http://www.atlasbrasil.org.br) e baixar a base municipal completa
 2. Salvar o arquivo `censo_total_1991_2010.xlsx` em `data/external/raw/`
-3. Rodar `python src/data/download_external.py`
+3. Rodar `python src/data/download_external.py --atualizar`
 
-O script lê a aba `MUN 91-00-10`, filtra o ano de 2010 e usa a coluna `Codmun7` (7 dígitos). A leitura do Excel é feita uma vez e salva em cache (`external/atlas_2010.parquet`).
+O script lê a aba `MUN 91-00-10`, filtra o ano de 2010 e usa a coluna `Codmun7` (7 dígitos). A leitura do Excel gera `external/atlas_2010.parquet`.
 
 Variáveis utilizadas: `IDHM`, `IDHM_E`, `IDHM_R`, `IDHM_L`, `RDPC`, `GINI`, `PMPOB`, `PIND`, `T_ANALF15M`, `E_ANOSESTUDO`, `T_FREQ4A5` e `pesoRUR`/`pesotot` (para o % rural).
 
 ## Regras
 
 - Nenhum dado é simulado: se uma fonte faltar, os scripts interrompem a execução com erro.
+- Os arquivos versionados em `external/` são verificados por `tests/test_fontes_externas.py` (colunas esperadas, código de 7 dígitos, sem duplicatas).
 - Todas as fontes são anteriores a 2024, o ano do target.
 - Os testes verificam a cobertura mínima de 99% das fontes externas e a ausência de arquivos simulados.
