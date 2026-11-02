@@ -2,8 +2,6 @@
 
 Tech Challenge — Fase 3 · Pós-Tech FIAP — IA Scientist
 
-**Vídeo de apresentação (5 min):** https://youtu.be/yBZ-foRDyQI
-
 ## Contexto do problema
 
 O **Compromisso Nacional Criança Alfabetizada** estabelece que todas as crianças brasileiras estejam alfabetizadas ao final do 2º ano do ensino fundamental até 2030. O acompanhamento é feito pelo **Indicador Criança Alfabetizada**: o percentual de estudantes que atingem 743 pontos na escala do Saeb.
@@ -37,41 +35,40 @@ O enunciado menciona o aluno. Optamos pelo município por três razões:
 
 **Dataset de modelagem:** 4.919 municípios com dados em 2023 e em 2024. Dos 5.516 municípios avaliados em 2024, 597 não tinham resultado em 2023 e ficaram de fora. O modelo cobre 24 UFs: Acre, Distrito Federal e Roraima não entram (ver [Limitações](#limitações)). A cobertura das fontes externas é de 100% (IBGE) e 99,9% (Atlas: os 4 ausentes são municípios criados depois de 2010). Detalhes em [`data/README.md`](data/README.md).
 
-## Equipe
-
-- Gabriel Fontineles
-- Gabriel Kendy Sato
-- Josilene Oliveira Afonso
-- Katia Oliveira da Silva Costa
-- Yasmim de Oliveira Coelho
-
 ## Estrutura do repositório
 
-```
-tech-challenge-fase3/
-├── data/
-│   ├── raw/             <- Silver da Fase 2 (versionada)
-│   ├── gold/            <- Gold da Fase 2 (versionada)
-│   ├── external/        <- IBGE e Atlas processados (versionados)
-│   ├── processed/       <- Datasets de modelagem (gerados por script)
-│   └── README.md        <- Origem e obtencao de cada fonte
-├── src/
-│   ├── data/            <- build_dataset.py, download_external.py
-│   ├── eda/             <- Scripts de EDA descritiva
-│   ├── preprocessing/   <- pipeline.py: imputacao, padronizacao e one-hot do modelo
-│   ├── modeling/        <- train.py (tres variantes), predict_2025.py
-│   ├── evaluation/      <- Interpretabilidade e analise estrategica
-│   ├── visualization/   <- Funcoes de grafico compartilhadas
-│   └── legacy/          <- Versao 1 com data leakage (historico, nao usar)
-├── docs/                <- Registro das decisoes tecnicas
-├── models/              <- Modelos treinados (.joblib) e metadata
-├── notebooks/           <- Notebooks narrados e executados 01-04
-├── reports/             <- Relatorio executivo e tabelas de resultados
-├── images/              <- Graficos (images/v1 guarda os da versao 1)
-├── tests/               <- Testes pytest
-├── Makefile             <- Pipeline completa (Linux e macOS)
-└── requirements.txt     <- Dependencias com versoes testadas
-```
+**Dados** ([`data/README.md`](data/README.md) explica a origem de cada fonte)
+
+| Pasta | Conteúdo |
+|---|---|
+| [`data/raw/`](data/raw) | Silver da Fase 2 (versionada) |
+| [`data/gold/`](data/gold) | Gold da Fase 2 (versionada) |
+| [`data/external/`](data/external) | IBGE e Atlas já processados (versionados) |
+| `data/processed/` | Datasets de modelagem, gerados pelos scripts |
+
+**Código** (`src/`)
+
+| Pasta | Conteúdo |
+|---|---|
+| [`src/data/`](src/data) | `build_dataset.py` (dataset temporal) e `download_external.py` (IBGE e Atlas) |
+| [`src/eda/`](src/eda) | Scripts de análise exploratória |
+| [`src/preprocessing/`](src/preprocessing) | `pipeline.py`: imputação, padronização e one-hot do modelo |
+| [`src/modeling/`](src/modeling) | `train.py` (três variantes) e `predict_2025.py` |
+| [`src/evaluation/`](src/evaluation) | Interpretabilidade (SHAP) e análise estratégica |
+| [`src/visualization/`](src/visualization) | Funções de gráfico compartilhadas |
+| [`src/legacy/`](src/legacy) | Versão 1, com data leakage (só histórico, não usar) |
+
+**Resultados e documentação**
+
+| Pasta ou arquivo | Conteúdo |
+|---|---|
+| [`notebooks/`](notebooks) | Notebooks 01 a 04, narrados e executados |
+| [`models/`](models) | Modelos treinados (`.joblib`) e metadata |
+| [`reports/`](reports) | Relatório executivo e tabelas de resultados |
+| [`images/`](images) | Gráficos (`images/v1/` guarda os da versão 1) |
+| [`docs/`](docs) | Registro das decisões técnicas |
+| [`tests/`](tests) | Testes pytest |
+| `Makefile` e `requirements.txt` | Pipeline completa e dependências com versões testadas |
 
 ## Etapas de modelagem
 
@@ -241,8 +238,22 @@ python src/modeling/train.py --sem-historico
 python src/modeling/train.py --so-socioeconomico
 python src/evaluation/shap_analysis_v2.py          # repetir com as opcoes acima
 python src/evaluation/strategic_v2.py
-python src/modeling/predict_2025.py               # risco 2025 a partir de 2024
+python src/modeling/predict_2025.py                # risco 2025 a partir de 2024
 python -m pytest tests/ -v
 ```
 
 Em Linux ou macOS, `make all` executa a sequência completa.
+
+## Equipe
+
+- Gabriel Fontineles
+- Gabriel Kendy Sato
+- Josilene Oliveira Afonso
+- Katia Oliveira da Silva Costa
+- Yasmim de Oliveira Coelho
+
+## Vídeo de apresentação
+
+[![Vídeo de apresentação (5 min)](https://img.youtube.com/vi/yBZ-foRDyQI/hqdefault.jpg)](https://youtu.be/yBZ-foRDyQI)
+
+[Assistir no YouTube (5 min)](https://youtu.be/yBZ-foRDyQI)
