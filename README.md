@@ -297,13 +297,13 @@ Leitura:
 
 ## Possíveis evoluções
 
-- Comparar a previsão de `reports/risco_2025.csv` com o resultado de 2025, quando divulgado, e fazer validação temporal com novos ciclos
-- Substituir o Atlas 2010 por indicadores socioeconômicos do Censo 2022, quando divulgados por município
-- Incluir Censo Escolar (infraestrutura, formação docente), IDEB, FUNDEB e Cadastro Único
-- Separar as redes municipal e estadual
-- Modelos multinível (município dentro do estado) para estimar melhor o efeito estadual
-- Estudar os municípios vulneráveis fora de risco e avaliar programas estaduais com métodos causais (por exemplo, diferenças em diferenças)
-- Painel interativo com a lista de priorização por UF
+- Comparar a previsão de `reports/risco_2025.csv` com o resultado de 2025, quando divulgado, e fazer validação temporal com novos ciclos;
+- Substituir o Atlas 2010 por indicadores socioeconômicos do Censo 2022, quando divulgados por município;
+- Incluir Censo Escolar (infraestrutura, formação docente), IDEB, FUNDEB e Cadastro Único;
+- Separar as redes municipal e estadual;
+- Modelos multinível (município dentro do estado) para estimar melhor o efeito estadual;
+- Estudar os municípios vulneráveis fora de risco e avaliar programas estaduais com métodos causais (por exemplo, diferenças em diferenças);
+- Painel interativo com a lista de priorização por UF.
 
 ## Equipe
 
