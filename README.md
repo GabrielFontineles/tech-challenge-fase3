@@ -2,7 +2,7 @@
 
 ## Resultados em resumo
 
-| | |
+| Indicador | Resultado |
 |---|---|
 | Municípios em risco identificados antecipadamente (recall) | **88%** |
 | Acerto quando o modelo aponta risco (precisão) | **77%** |
