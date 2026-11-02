@@ -90,6 +90,71 @@ tech-challenge-fase3/
 
 A origem de cada fonte de dados está em [`data/README.md`](data/README.md).
 
+## Como executar
+
+Os dados do IBGE e do Atlas já vêm no repositório, e os modelos treinados também. Não é preciso internet (além do `git clone` e do `pip install`) nem baixar nenhum arquivo à mão.
+
+### 1. Pré-requisitos
+
+- **Python 3.14**: confira com `python --version` (no Linux e no macOS, às vezes o comando é `python3`)
+- **Git**: confira com `git --version`
+
+### 2. Baixar o projeto e instalar as dependências
+
+Rode tudo a partir da pasta do projeto. Na primeira vez, a instalação leva alguns minutos.
+
+```bash
+git clone https://github.com/GabrielFontineles/tech-challenge-fase3.git
+cd tech-challenge-fase3
+
+python -m venv .venv
+source .venv/Scripts/activate      # Windows (Git Bash); no PowerShell: .venv\Scripts\Activate.ps1
+# source .venv/bin/activate        # Linux e macOS
+
+pip install -r requirements.txt
+```
+
+O ambiente virtual (`.venv`) isola as bibliotecas do projeto do resto do computador. Com ele ativo, o terminal mostra `(.venv)` no início da linha.
+
+### 3. Só ver os resultados (sem rodar nada)
+
+Os resultados já estão versionados. Para explorá-los, abra os notebooks:
+
+```bash
+jupyter lab notebooks/
+```
+
+### 4. Reproduzir tudo do zero (5 a 10 minutos)
+
+```bash
+python src/data/build_dataset.py                          # dataset temporal 2023 -> 2024
+python src/data/download_external.py                      # junta IBGE e Atlas (arquivos versionados)
+python src/modeling/train.py                              # modelo completo
+python src/modeling/train.py --sem-historico              # variante sem o resultado de 2023
+python src/modeling/train.py --so-socioeconomico          # variante só socioeconômica
+python src/evaluation/shap_analysis_v2.py                 # interpretabilidade do modelo completo
+python src/evaluation/shap_analysis_v2.py --sem-historico
+python src/evaluation/shap_analysis_v2.py --so-socioeconomico
+python src/evaluation/strategic_v2.py                     # faixas, estados, clusters e meta 2030
+python src/modeling/predict_2025.py                       # previsão de risco para 2025
+```
+
+Em Linux ou macOS, `make all` executa a mesma sequência e os testes.
+
+### 5. Conferir
+
+```bash
+python -m pytest -q
+```
+
+O resultado esperado é **34 passed**. Antes do passo 4, parte dos testes aparece como *skipped*, porque depende dos dados gerados pela pipeline.
+
+### Problemas comuns
+
+- **`python` não encontrado:** use `python3` ou `py` (Windows).
+- **`UnicodeEncodeError` no Windows:** rode `export PYTHONUTF8=1` (Git Bash) ou `$env:PYTHONUTF8=1` (PowerShell) e repita o comando.
+- **Atualizar os dados externos:** `python src/data/download_external.py --atualizar` baixa o IBGE pela API e relê o arquivo do Atlas, que precisa ser baixado à mão; ver [`data/README.md`](data/README.md).
+
 ## Etapas de modelagem
 
 As decisões técnicas, com motivos e alternativas descartadas, estão registradas em [`docs/decisoes_tecnicas.md`](docs/decisoes_tecnicas.md).
@@ -241,28 +306,6 @@ Leitura:
 - Modelos multinível (município dentro do estado) para estimar melhor o efeito estadual
 - Estudar os municípios vulneráveis fora de risco e avaliar programas estaduais com métodos causais (por exemplo, diferenças em diferenças)
 - Painel interativo com a lista de priorização por UF
-
-## Como executar
-
-Pré-requisito: Python 3.14. Os dados do IBGE e do Atlas já vêm processados em `data/external/`, então a pipeline roda sem internet e sem download manual. Para baixá-los de novo, use `python src/data/download_external.py --atualizar`, que exige o arquivo do Atlas (`censo_total_1991_2010.xlsx`) em `data/external/raw/` — ver [`data/README.md`](data/README.md).
-
-```bash
-git clone https://github.com/GabrielFontineles/tech-challenge-fase3.git
-cd tech-challenge-fase3
-pip install -r requirements.txt
-
-python src/data/build_dataset.py                   # dataset temporal 2023 -> 2024
-python src/data/download_external.py               # IBGE e Atlas (arquivos versionados)
-python src/modeling/train.py                       # modelo completo
-python src/modeling/train.py --sem-historico
-python src/modeling/train.py --so-socioeconomico
-python src/evaluation/shap_analysis_v2.py          # repetir com as opcoes acima
-python src/evaluation/strategic_v2.py
-python src/modeling/predict_2025.py                # risco 2025 a partir de 2024
-python -m pytest tests/ -v
-```
-
-Em Linux ou macOS, `make all` executa a sequência completa.
 
 ## Equipe
 
