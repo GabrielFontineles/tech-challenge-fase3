@@ -2,6 +2,8 @@
 
 Tech Challenge — Fase 3 · Pós-Tech FIAP — IA Scientist
 
+**Vídeo de apresentação (5 min):** https://youtu.be/yBZ-foRDyQI
+
 ## Contexto do problema
 
 O **Compromisso Nacional Criança Alfabetizada** estabelece que todas as crianças brasileiras estejam alfabetizadas ao final do 2º ano do ensino fundamental até 2030. O acompanhamento é feito pelo **Indicador Criança Alfabetizada**: o percentual de estudantes que atingem 743 pontos na escala do Saeb.
