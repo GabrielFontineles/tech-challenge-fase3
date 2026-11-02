@@ -1,5 +1,20 @@
 # Predição e Inteligência Analítica para Alfabetização no Brasil
 
+## Resultados em resumo
+
+| | |
+|---|---|
+| Municípios em risco identificados antecipadamente (recall) | **88%** |
+| Acerto quando o modelo aponta risco (precisão) | **77%** |
+| ROC-AUC / PR-AUC no conjunto de teste | **0,917 / 0,905** |
+| Municípios priorizados para 2025 | **1.284** |
+
+- **O estado pesa mais do que a renda:** no grupo de maior vulnerabilidade, os 166 municípios do Ceará estão fora de risco, contra 1 em cada 10 no Rio Grande do Norte.
+- **Boa parte do risco já aparece no perfil do município:** sem nenhum resultado educacional, só com território e condição socioeconômica, o modelo chega a ROC-AUC de 0,89.
+- **As probabilidades são calibradas:** na faixa crítica, o modelo prevê 91% e 90% dos municípios estavam de fato em risco.
+
+Relatório executivo: [`reports/relatorio_executivo.md`](reports/relatorio_executivo.md) · Vídeo de apresentação: [YouTube (5 min)](https://youtu.be/yBZ-foRDyQI)
+
 ## Contexto do problema
 
 O **Compromisso Nacional Criança Alfabetizada** estabelece que todas as crianças brasileiras estejam alfabetizadas ao final do 2º ano do ensino fundamental até 2030. O acompanhamento é feito pelo **Indicador Criança Alfabetizada**: o percentual de estudantes que atingem 743 pontos na escala do Saeb.
@@ -27,9 +42,9 @@ O enunciado menciona o aluno. Optamos pelo município por três razões:
 | Fonte | Conteúdo | Ano | Como é obtida |
 |---|---|---|---|
 | Silver e Gold da Fase 2 | Indicador Criança Alfabetizada, níveis de proficiência, participação, metas | 2023 e 2024 | Versionada em `data/raw` e `data/gold` |
-| IBGE, Censo (SIDRA tabela 4714) | População, área, densidade, porte | 2022 | API pública, sem credencial |
-| IBGE, PIB dos Municípios (SIDRA tabela 5938) | PIB a preços correntes | 2021 | API pública, sem credencial |
-| Atlas do Desenvolvimento Humano | IDHM e dimensões, renda, Gini, pobreza, analfabetismo adulto, frequência na pré-escola, % rural | 2010 | Arquivo baixado em atlasbrasil.org.br |
+| IBGE, Censo (SIDRA tabela 4714) | População, área, densidade, porte | 2022 | Versionado em `data/external` (atualizável pela API pública) |
+| IBGE, PIB dos Municípios (SIDRA tabela 5938) | PIB a preços correntes | 2021 | Versionado em `data/external` (atualizável pela API pública) |
+| Atlas do Desenvolvimento Humano | IDHM e dimensões, renda, Gini, pobreza, analfabetismo adulto, frequência na pré-escola, % rural | 2010 | Versionado em `data/external` (recorte do arquivo de atlasbrasil.org.br) |
 
 **Dataset de modelagem:** 4.919 municípios com dados em 2023 e em 2024. Dos 5.516 municípios avaliados em 2024, 597 não tinham resultado em 2023 e ficaram de fora. O modelo cobre 24 UFs: Acre, Distrito Federal e Roraima não entram (ver [Limitações](#limitações)). A cobertura das fontes externas é de 100% (IBGE) e 99,9% (Atlas: os 4 ausentes são municípios criados depois de 2010). Detalhes em [`data/README.md`](data/README.md).
 
@@ -212,7 +227,7 @@ Critério definido antes do treino: **maior PR-AUC médio em validação cruzada
 | **HistGradientBoosting** | **0,897** | 0,930 | 0,033 |
 | Regressão Logística | 0,887 | 0,898 | 0,011 |
 
-**Modelo selecionado: HistGradientBoosting.** A diferença para a Regressão Logística (0,01 de PR-AUC) fica dentro do desvio padrão entre folds (cerca de 0,02), ou seja, os dois modelos são equivalentes na prática. O HistGradientBoosting vence pelo critério definido antecipadamente; a Regressão Logística seria uma alternativa igualmente válida, com menos overfitting e interpretação mais simples.
+**Modelo selecionado: HistGradientBoosting.** A diferença para a Regressão Logística (0,01 de PR-AUC) fica dentro do desvio padrão entre folds (cerca de 0,02), ou seja, os dois modelos são equivalentes na prática. O HistGradientBoosting vence pelo critério definido antecipadamente; a Regressão Logística seria uma alternativa igualmente válida, com menos overfitting e interpretação mais simples. O Random Forest foi avaliado apenas com hiperparâmetros padrão e não entrou na otimização; como seu desempenho ficou próximo ao dos demais, otimizá-lo fica registrado como evolução.
 
 ## Métricas de avaliação (conjunto de teste)
 
@@ -226,6 +241,8 @@ Critério definido antes do treino: **maior PR-AUC médio em validação cruzada
 | Acurácia | 0,84 |
 | Threshold | 0,431 |
 | Brier score (calibrado / sem calibração) | 0,1119 / 0,1135 |
+
+![Distribuição das probabilidades e previsto contra observado por faixa de risco](images/22_faixas_risco_v21.png)
 
 Dos 420 municípios do teste que estavam em risco em 2024, o modelo identificou 371. A calibração teve efeito pequeno neste modelo, mas garante que as probabilidades possam ser lidas como frequências: na análise de todos os municípios, a probabilidade média prevista e a taxa de risco observada coincidem em todas as faixas (por exemplo, 0,907 contra 0,903 na faixa crítica).
 
@@ -261,6 +278,8 @@ Leitura:
 3. **Cobertura não é o mesmo que qualidade.** A frequência na pré-escola é maior no grupo mais vulnerável (86%) do que no de renda média (75%).
 4. **O risco é concentrado.** A Bahia tem probabilidade média de risco de 97%, e Sergipe, Pará e Rio Grande do Norte ficam acima de 84%. O Rio Grande do Sul é o único estado do Sul entre os 10 de maior risco, o que coincide com a maior queda de 2023 para 2024 (-18,8 pontos).
 5. **O desafio de 2030 é grande.** Com a variação média nacional observada (2,55 pontos por ano), 1.319 municípios atingem a meta municipal no ritmo atual e 1.050 já a atingiram, mas 1.261 precisariam de mais que o dobro desse ritmo.
+
+![Probabilidade média de risco por UF](images/23_risco_por_uf_v21.png)
 
 ## Hipóteses
 
@@ -303,6 +322,7 @@ Leitura:
 - Separar as redes municipal e estadual;
 - Modelos multinível (município dentro do estado) para estimar melhor o efeito estadual;
 - Estudar os municípios vulneráveis fora de risco e avaliar programas estaduais com métodos causais (por exemplo, diferenças em diferenças);
+- Otimizar os hiperparâmetros do Random Forest e compará-lo ao HistGradientBoosting;
 - Painel interativo com a lista de priorização por UF.
 
 ## Equipe
