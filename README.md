@@ -14,17 +14,17 @@ Na Fase 2 construímos a pipeline de dados (Bronze, Silver e Gold) desse indicad
 
 Dado o que se sabe sobre um município hoje (resultado educacional do ano anterior, território e condição socioeconômica), estimar a **probabilidade de ele estar em risco no ciclo seguinte** e identificar os fatores associados a esse risco.
 
-- **Target:** `em_risco_2024 = 1` quando a taxa de alfabetização de 2024 é **menor que 60%**
-- **Corte de 60%:** próximo do patamar nacional de 2024 e ponto intermediário até a meta de 80% em 2030
-- **Classe positiva = risco:** o recall passa a significar "quantos municípios em risco conseguimos identificar"
+- **Target:** `em_risco_2024 = 1` quando a taxa de alfabetização de 2024 é **menor que 60%**;
+- **Corte de 60%:** próximo do patamar nacional de 2024 e ponto intermediário até a meta de 80% em 2030;
+- **Classe positiva = risco:** o recall passa a significar "quantos municípios em risco conseguimos identificar".
 
 ### Unidade de análise: município, e não aluno
 
 O enunciado menciona o aluno. Optamos pelo município por três razões:
 
-1. Os microdados de alunos (cerca de 256 MB) estão disponíveis apenas via BigQuery e não trazem variáveis socioeconômicas individuais
-2. As decisões de política pública (priorização de recursos, programas de reforço) são tomadas no nível municipal
-3. A camada Gold da Fase 2 foi construída nessa granularidade
+1. Os microdados de alunos (cerca de 256 MB) estão disponíveis apenas via BigQuery e não trazem variáveis socioeconômicas individuais;
+2. As decisões de política pública (priorização de recursos, programas de reforço) são tomadas no nível municipal;
+3. A camada Gold da Fase 2 foi construída nessa granularidade.
 
 ## Base de dados
 
