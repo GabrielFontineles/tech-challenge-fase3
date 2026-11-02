@@ -37,38 +37,58 @@ O enunciado menciona o aluno. Optamos pelo município por três razões:
 
 ## Estrutura do repositório
 
-**Dados** ([`data/README.md`](data/README.md) explica a origem de cada fonte)
+```
+tech-challenge-fase3/
+├── data/
+│   ├── raw/
+│   ├── gold/
+│   ├── external/
+│   │   ├── ibge_censo2022.parquet
+│   │   ├── ibge_pib2021.parquet
+│   │   └── atlas_2010.parquet
+│   ├── processed/
+│   └── README.md
+├── src/
+│   ├── data/
+│   │   ├── build_dataset.py
+│   │   └── download_external.py
+│   ├── eda/
+│   │   ├── eda_inicial.py
+│   │   └── eda_correlacoes.py
+│   ├── preprocessing/
+│   │   └── pipeline.py
+│   ├── modeling/
+│   │   ├── train.py
+│   │   └── predict_2025.py
+│   ├── evaluation/
+│   │   ├── shap_analysis_v2.py
+│   │   └── strategic_v2.py
+│   ├── visualization/
+│   │   └── plots.py
+│   └── legacy/
+├── notebooks/
+│   ├── 01_eda_exploratoria.ipynb
+│   ├── 02_modelagem.ipynb
+│   ├── 03_interpretabilidade.ipynb
+│   └── 04_analise_estrategica.ipynb
+├── models/
+├── reports/
+│   └── relatorio_executivo.md
+├── images/
+├── docs/
+│   └── decisoes_tecnicas.md
+├── tests/
+│   ├── test_build_dataset.py
+│   ├── test_fontes_externas.py
+│   ├── test_model.py
+│   ├── test_predict_2025.py
+│   └── test_preprocessing.py
+├── Makefile
+├── requirements.txt
+└── README.md
+```
 
-| Pasta | Conteúdo |
-|---|---|
-| [`data/raw/`](data/raw) | Silver da Fase 2 (versionada) |
-| [`data/gold/`](data/gold) | Gold da Fase 2 (versionada) |
-| [`data/external/`](data/external) | IBGE e Atlas já processados (versionados) |
-| `data/processed/` | Datasets de modelagem, gerados pelos scripts |
-
-**Código** (`src/`)
-
-| Pasta | Conteúdo |
-|---|---|
-| [`src/data/`](src/data) | `build_dataset.py` (dataset temporal) e `download_external.py` (IBGE e Atlas) |
-| [`src/eda/`](src/eda) | Scripts de análise exploratória |
-| [`src/preprocessing/`](src/preprocessing) | `pipeline.py`: imputação, padronização e one-hot do modelo |
-| [`src/modeling/`](src/modeling) | `train.py` (três variantes) e `predict_2025.py` |
-| [`src/evaluation/`](src/evaluation) | Interpretabilidade (SHAP) e análise estratégica |
-| [`src/visualization/`](src/visualization) | Funções de gráfico compartilhadas |
-| [`src/legacy/`](src/legacy) | Versão 1, com data leakage (só histórico, não usar) |
-
-**Resultados e documentação**
-
-| Pasta ou arquivo | Conteúdo |
-|---|---|
-| [`notebooks/`](notebooks) | Notebooks 01 a 04, narrados e executados |
-| [`models/`](models) | Modelos treinados (`.joblib`) e metadata |
-| [`reports/`](reports) | Relatório executivo e tabelas de resultados |
-| [`images/`](images) | Gráficos (`images/v1/` guarda os da versão 1) |
-| [`docs/`](docs) | Registro das decisões técnicas |
-| [`tests/`](tests) | Testes pytest |
-| `Makefile` e `requirements.txt` | Pipeline completa e dependências com versões testadas |
+A origem de cada fonte de dados está em [`data/README.md`](data/README.md).
 
 ## Etapas de modelagem
 
